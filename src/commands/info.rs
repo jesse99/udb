@@ -1,0 +1,465 @@
+use super::tables::{add_field, add_simple};
+use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
+use crate::debug::SymbolIndex;
+use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType};
+use crate::repl::{ExplainArgs, RegistersArgs};
+use crate::utils;
+use crate::utils::Styling;
+use crate::{elf::Core, repl::TableArgs};
+use std::cmp::Ordering;
+
+pub fn info_header(core: &Core, args: &ExplainArgs) {
+    let mut b = SimpleTableBuilder::new();
+
+    if core.reader.little_endian {
+        add_simple!(
+            b,
+            "little endian",
+            core.reader.little_endian,
+            "words are being laid out in memory with the most significant byte last"
+        );
+    } else {
+        add_simple!(
+            b,
+            "little endian",
+            core.reader.little_endian,
+            "words are being laid out out in memory with the most significant byte first"
+        );
+    }
+    if core.reader.sixty_four_bit {
+        add_simple!(
+            b,
+            "64-bit",
+            core.reader.sixty_four_bit,
+            "pointers are eight bytes"
+        );
+    } else {
+        add_simple!(
+            b,
+            "64-bit",
+            core.reader.sixty_four_bit,
+            "pointers are four bytes"
+        );
+    }
+    add_simple!(
+        b,
+        "osabi",
+        core.header.abi(),
+        "the OS the binary was compiled for"
+    );
+    add_simple!(b, "abiversion", core.header.abiversion, "zero for Linux");
+    add_simple!(b, "machine", core.header.machine(), "CPU architecture");
+    add_simple!(b, "flags", core.header.flags, "Linux has no defined flags");
+    add_simple!(
+        b,
+        "ph_offset",
+        core.header.ph_offset,
+        "offset in the ELF file to the Program Header table"
+    );
+    add_simple!(
+        b,
+        "num_ph_entries",
+        core.header.num_ph_entries,
+        "number of entries in the Program Header table"
+    );
+    add_simple!(
+        b,
+        "section_offset",
+        core.header.section_offset,
+        "offset in the ELF file to the section header table"
+    );
+    add_simple!(
+        b,
+        "num_section_entries",
+        core.header.num_section_entries,
+        "number of entries in the section header table"
+    );
+    add_simple!(
+        b,
+        "string_table_index",
+        core.header.string_table_index,
+        "section index containing the string table"
+    );
+    b.println(args.explain);
+}
+
+pub fn info_loads(core: &Core, args: &TableArgs) {
+    pub fn find_file(
+        files: &Option<Vec<MemoryMappedFile>>,
+        vaddr: u64,
+    ) -> Option<&MemoryMappedFile> {
+        if let Some(maps) = files {
+            maps.iter()
+                .find(|m| m.start_addr <= vaddr && vaddr < m.end_addr)
+        } else {
+            None
+        }
+    }
+
+    pub fn is_stack(core: &Core, segment: &LoadSegment) -> bool {
+        if let Some(status) = core.find_prstatus() {
+            let bottom = status.get_frame_stack_bottom();
+            segment.vaddr <= bottom && bottom < (segment.vaddr + segment.size)
+        } else {
+            false
+        }
+    }
+
+    let mut builder = TableBuilder::new();
+    builder.add_col_l("vaddr", "the virtual address the segment starts at");
+    builder.add_col_r("memsz", "the size of the segment in memory");
+    builder.add_col_r("flags", "executable, writeable, and/or readable");
+    builder.add_col_r(
+        "offset",
+        "the offset into the ELF file at which the segment appears",
+    );
+    builder.add_col_l(
+        "note",
+        "path to memory mapped file or how the segment is used",
+    );
+
+    let files = core.find_memory_mapped_files();
+    for segment in core.loads.iter() {
+        let mut note = String::new();
+        if let Some(file) = find_file(&files, segment.vaddr) {
+            note.push_str(&format!("{} ", file.file_name));
+        } else if is_stack(core, segment) {
+            note.push_str("[stack] ");
+        } else if !segment.executable() && segment.writeable() && segment.readable() {
+            note.push_str("[data] ");
+        } else if !segment.executable() && !segment.writeable() && segment.readable() {
+            // TODO may also want to check that the first bytes are '.ELF'
+            note.push_str("[text] ");
+        }
+
+        add_field!(builder, "vaddr", "{:x}", segment.vaddr);
+        add_field!(builder, "memsz", "{:x}", segment.size);
+        add_field!(builder, "flags", segment.flags());
+        add_field!(builder, "offset", "{:x}", segment.offset);
+        add_field!(builder, "note", note);
+    }
+
+    builder.println(args.titles, args.explain);
+}
+
+pub fn info_mapped(core: &Core, args: &TableArgs) {
+    if let Some(files) = core.find_memory_mapped_files() {
+        let mut builder = TableBuilder::new();
+        builder.add_col_l(
+            "start",
+            "the virtual address for the first byte the file is mapped into",
+        );
+        builder.add_col_r(
+            "end",
+            "the virtual address after the last byte the file is mapped into",
+        );
+        builder.add_col_r("size", "the size of the file in memory (decimal)");
+        builder.add_col_l("file name", "path to the file");
+
+        for file in files {
+            add_field!(builder, "start", "{:x}", file.start_addr);
+            add_field!(builder, "end", "{:x}", file.end_addr);
+            add_field!(builder, "size", file.end_addr - file.start_addr);
+            add_field!(builder, "file name", file.file_name);
+        }
+
+        builder.println(args.titles, args.explain);
+    } else {
+        println!("No memory mapped files found.");
+    }
+}
+
+pub fn info_process(core: &Core, args: &ExplainArgs) {
+    if let Some(status) = core.find_prstatus() {
+        let mut b = SimpleTableBuilder::new();
+
+        add_simple!(
+            b,
+            "pid",
+            status.pid,
+            "the process id for the exe that produced the core"
+        );
+        add_simple!(
+            b,
+            "core",
+            core.path.display(),
+            "path to the core file that was loaded"
+        );
+
+        b.println(args.explain);
+    } else {
+        println!("No prstatus found");
+    }
+}
+
+pub fn info_registers(core: &Core, args: &RegistersArgs) {
+    // These come out in a really annoying order so we'll sort them.
+    if let Some(status) = core.find_prstatus() {
+        let mut tuples: Vec<(&'static str, u64)> = status
+            .registers
+            .iter()
+            .enumerate()
+            .filter_map(|(i, value)| {
+                if args.all || !status.is_rare_register(i) {
+                    let name = status.register_name(i);
+                    if name != "?" {
+                        return Some((name, *value));
+                    }
+                }
+                None
+            })
+            .collect();
+
+        tuples.sort_by(|lhs, rhs| {
+            let lhs_num = lhs.0[1..].parse::<i32>();
+            let rhs_num = rhs.0[1..].parse::<i32>();
+            if let Ok(n1) = lhs_num
+                && let Ok(n2) = rhs_num
+            {
+                // numeric registers are sorted by value, eg r9 before r11
+                n1.cmp(&n2)
+            } else if lhs_num.is_ok() {
+                // alpha registers appear before numeric, eg rbp before r10
+                Ordering::Greater
+            } else if rhs_num.is_ok() {
+                // alpha registers appear before numeric, eg rbp before r10
+                Ordering::Less
+            } else {
+                // alpha registers are sorted as is, eg rbp before rip
+                lhs.cmp(rhs)
+            }
+        });
+
+        let mut builder = TableBuilder::new();
+        builder.add_col_l("name", "the register name");
+        builder.add_col_r("hex", "the register value in hex");
+        builder.add_col_r("decimal", "the register value in decimal");
+
+        for (name, value) in tuples.iter() {
+            add_field!(builder, "name", name);
+            add_field!(builder, "hex", "{:x}", value);
+            add_field!(builder, "decimal", value);
+        }
+
+        builder.println(args.titles, args.explain);
+
+        if args.explain {
+            // TODO really these are x86 only
+            utils::explain(
+                "rip",
+                "points to the instruction pointer currently being executed",
+            );
+            utils::explain(
+                "rsp",
+                "points to the bottom of the stack, local variables appear after this",
+            );
+            utils::explain(
+                "rbp",
+                "points to the top of the stack (depending on compiler options)",
+            );
+        }
+    } else {
+        println!("No prstatus found");
+    }
+}
+
+pub fn info_sections(core: &Core, args: &TableArgs) {
+    let sections = Core::find_sections(&core.reader, &core.header);
+
+    let mut builder = TableBuilder::new();
+    builder.add_col_r("index", "Index into sections.");
+    builder.add_col_l("name", "Index into the string table. Zero means no name.");
+    builder.add_col_l("type", "Type of the section.");
+    builder.add_col_r("vaddr", "Virtual address at execution.");
+    builder.add_col_r(
+        "offset",
+        "Offset into the ELF file for the start of the section.",
+    );
+    builder.add_col_r("size", "Section size in bytes.");
+    builder.add_col_r("entry_size", "Set if the section holds a table of entries.");
+    builder.add_col_r("align", "Section alignment.");
+    builder.add_col_r(
+        "link",
+        "Link to another section with related information, usually a string or symbol table.",
+    );
+    builder.add_col_r("info", "Additional section info");
+    builder.add_col_l("flags", "Write, alloc, and/or exec.");
+
+    // Would be kind of nice to sort these by name but they are referenced sometimes
+    // by index...
+    for (i, section) in sections.iter().enumerate() {
+        add_field!(builder, "index", i); // sections are often referenced by index so this is handy
+        match core.find_section_string(section.name as usize) {
+            Some(n) => {
+                add_field!(builder, "name", n);
+            }
+            None => {
+                add_field!(builder, "name", section.name);
+            }
+        };
+        add_field!(builder, "type", "{:?}", section.stype);
+        add_field!(builder, "flags", SectionHeader::flags(section.flags));
+        add_field!(builder, "vaddr", "{:x}", section.vaddr);
+        add_field!(builder, "offset", "{:x}", section.offset);
+        add_field!(builder, "size", section.size);
+        add_field!(builder, "entry_size", section.entry_size);
+        add_field!(builder, "align", section.align);
+        add_field!(builder, "link", section.link);
+        add_field!(builder, "info", section.info);
+    }
+
+    builder.println(args.titles, args.explain);
+}
+
+pub fn info_segments(core: &Core, args: &TableArgs) {
+    let segments = Core::find_segments(&core.reader, &core.header);
+
+    let mut builder = TableBuilder::new();
+    builder.add_col_l("type", "the segment type");
+    builder.add_col_r(
+        "offset",
+        "the offset into the ELF file at which the segment appears",
+    );
+    builder.add_col_r("vaddr", "the virtual address the segment starts at");
+    builder.add_col_r(
+        "paddr",
+        "the physical address the segment starts at (normally zero)",
+    );
+    builder.add_col_r("file size", "the size of the segment on disk");
+    builder.add_col_r("memory size", "the size of the segment in memory");
+    builder.add_col_r("flags", "executable, writeable, and/or readable");
+
+    for segment in segments.iter() {
+        add_field!(builder, "type", "{:?}", segment.p_type);
+        add_field!(builder, "offset", "{:x}", segment.p_offset);
+        add_field!(builder, "vaddr", "{:x}", segment.p_vaddr);
+        add_field!(builder, "paddr", "{:x}", segment.p_paddr);
+        add_field!(builder, "file size", "{:x}", segment.p_filesz);
+        add_field!(builder, "memory size", "{:x}", segment.p_memsz);
+        add_field!(
+            builder,
+            "flags",
+            "{}",
+            ProgramHeader::flags(segment.p_flags)
+        );
+    }
+
+    builder.println(args.titles, args.explain);
+    if args.explain {
+        println!();
+        println!("Numeric fields are all in hex. Usually it's more informative to use");
+        println!("other commands like `info loads` or `info mapped`.");
+    }
+}
+
+pub fn info_signals(core: &Core, args: &TableArgs) {
+    let maybe_status = core.find_prstatus();
+    let maybe_signal = core.find_signal_info();
+
+    if let Some(status) = &maybe_status {
+        println!("{}", status.signal()); // this one does a nice job formatting signal and code
+    } else {
+        utils::warn("Couldn't find prstatus note");
+    }
+
+    if let Some(info) = &maybe_signal {
+        let mut b = SimpleTableBuilder::new();
+        match &info.details {
+            crate::elf::SignalDetails::Fault(details) => {
+                add_simple!(
+                    b,
+                    "fault addr",
+                    "0x{:x}",
+                    details.fault_addr,
+                    "the address that caused the core"
+                );
+            }
+            crate::elf::SignalDetails::Kill(details) => {
+                add_simple!(
+                    b,
+                    "sender pid",
+                    details.sender_pid,
+                    "the pid of the process that sent the signal"
+                );
+                add_simple!(
+                    b,
+                    "sender uid",
+                    details.sender_uid,
+                    "the uid of the process that sent the signal"
+                );
+            }
+            crate::elf::SignalDetails::Posix(details) => {
+                add_simple!(
+                    b,
+                    "sender pid",
+                    details.sender_pid,
+                    "the pid of the process that sent the signal"
+                );
+                add_simple!(
+                    b,
+                    "sender uid",
+                    details.sender_uid,
+                    "the uid of the process that sent the signal"
+                );
+            }
+            _ => (),
+        }
+        b.println(args.explain);
+    } else {
+        utils::warn("Couldn't find signal note");
+    }
+}
+
+fn index_to_str(core: &Core, index: SymbolIndex) -> String {
+    match index {
+        SymbolIndex::Abs => "Value".to_string(),
+        SymbolIndex::Common => "Common".to_string(),
+        SymbolIndex::Index(i) => core
+            .find_section_name(i as u32)
+            .unwrap_or("bad section index".to_string()),
+        SymbolIndex::Undef => "".to_string(),
+        SymbolIndex::XIndex => "not implemented".to_string(), // TODO
+    }
+}
+
+pub fn info_symbols(core: &Core, args: &TableArgs) {
+    let mut builder = TableBuilder::new();
+    builder.add_col_l("name", "the symbol name");
+    builder.add_col_l("type", "the symbol type");
+    builder.add_col_r("value", "address, absolute value, etc (in hex)");
+    builder.add_col_r("size", "size of the value, 0 for unknown or undefined");
+    builder.add_col_l("binding", "linkage visibility and behavior");
+    builder.add_col_l(
+        "visibility",
+        "whether the symbol is visible outside its object file",
+    );
+    builder.add_col_l(
+        "related",
+        "indicates a related section or marks the entry as an absolute value",
+    );
+
+    // TODO double check that function pointers are legit
+    // TODO sort rows? provide some sort of generic table sort support?
+    // TODO maybe also filtering options, eg max-results and filter by col value
+    //      two options for filter by col? or something like --filter="type=Func"?
+    //      maybe also a colplement option
+    let tables = core.find_symbols();
+    for table in tables.iter() {
+        for e in table.entries.iter() {
+            // TODO function names can be really long (especially with name mangling)
+            // readelf puts a pretty small cap on these, maybe we should default to the same
+            let name = core
+                .find_string(table.section.link, e.name as usize)
+                .unwrap_or("unknown".to_string());
+            add_field!(builder, "name", name);
+            add_field!(builder, "value", "{:x}", e.value);
+            add_field!(builder, "size", e.size);
+            add_field!(builder, "type", "{:?}", e.stype);
+            add_field!(builder, "binding", "{:?}", e.binding);
+            add_field!(builder, "visibility", "{:?}", e.visibility);
+            add_field!(builder, "related", index_to_str(core, e.index));
+        }
+    }
+
+    builder.println(args.titles, args.explain);
+}

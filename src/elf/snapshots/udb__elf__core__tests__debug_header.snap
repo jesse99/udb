@@ -1,0 +1,5 @@
+---
+source: src/elf/core.rs
+expression: s
+---
+AMD x86-64 on Linux

@@ -1,0 +1,8 @@
+---
+source: src/elf/core.rs
+expression: s
+---
+0 /home/vorisek/shopping/app-debug
+0 /usr/lib/x86_64-linux-gnu/libc.so.6
+0 /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+225280 /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2

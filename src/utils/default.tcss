@@ -1,0 +1,59 @@
+// These control how various pieces of text are printed.
+// The synyax is documented https://crates.io/crates/termio and https://github.com/KirillFurtikov/termio/blob/main/.
+
+// This is just an example of the sort of thing you can do.
+@element "illustration" {
+    color: blue;
+    background: black;
+    decoration: italic;
+    padding: 1 2;
+    border: rounded cyan;
+}
+
+// Used for for the title portion of --explain output.
+@element "explain title" {
+    color: black;
+    decoration: bold;
+}
+
+// Used for for the description portion of --explain output.
+@element "explain text" {
+    color: black;
+}
+
+// Used for offset portion of `hexdump --offsets=addr|zero` output.
+@element "hex offset" {
+    color: yellow;
+}
+
+// Used for the hex portion of `hexdump` output.
+@element "hex hex" {
+    color: black;
+}
+
+// Used for the ASCII portion of `hexdump` output.
+@element "hex ascii" {
+    color: black;
+}
+
+// Used for the column names for --title
+@element "table header" {
+    color: black;
+}
+
+// Used for the dashed lines under column names for --title
+@element "table separator" {
+    color: black;
+}
+
+// Used for the individual entries in tables.
+@element "table field" {
+    color: black;
+}
+
+// Used for warnings, e.g. for example if something went wrong because the core file is
+// truncated.
+@element "warn" {
+    color: red;
+    decoration: bold;
+}

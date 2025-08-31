@@ -1,0 +1,5 @@
+---
+source: src/elf/core.rs
+expression: s
+---
+SIGSEGV
