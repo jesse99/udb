@@ -56,127 +56,6 @@ impl ElfFile {
             .map(|s| (s, s.vaddr + offset - s.offset))
     }
 
-    pub fn load_loads(
-        reader: &Reader,
-        header: &ElfHeader,
-    ) -> Result<Vec<LoadSegment>, Box<dyn Error>> {
-        let mut loads = Vec::new();
-        let mut offset = header.ph_offset as usize;
-
-        // Even a large core file has a small number of program headers, so it's OK to
-        // re-iterate over them.
-        for _ in 0..header.num_ph_entries {
-            match ProgramHeader::new(reader, offset) {
-                Ok(ph) => {
-                    if ph.p_type == SegmentType::Load {
-                        loads.push(LoadSegment {
-                            offset: ph.p_offset,
-                            size: ph.p_memsz,
-                            vaddr: ph.p_vaddr,
-                            paddr: ph.p_paddr,
-                            flags: ph.p_flags,
-                        });
-                    }
-                }
-                Err(err) => {
-                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
-                }
-            }
-            offset += header.ph_entry_size as usize;
-        }
-        Ok(loads)
-    }
-
-    pub fn load_notes(
-        reader: &Reader,
-        header: &ElfHeader,
-    ) -> Result<HashMap<NoteType, NoteContents>, Box<dyn Error>> {
-        fn load_note(s: &mut Stream) -> Option<(NoteType, NoteContents)> {
-            if let Ok((name, ntype, contents)) = super::read_note(s) {
-                if name == "CORE" {
-                    if let Some(note_type) = NoteType::from_u32(ntype) {
-                        Some((note_type, contents))
-                    } else {
-                        utils::warn(&format!("Unhandled note type: {ntype}"));
-                        None
-                    }
-                } else if name == "LINUX" {
-                    // TODO looks like register info, see fill_thread_core_info in
-                    // https://android.googlesource.com/kernel/common/+/6e7bfa046de8/fs/binfmt_elf.c
-                    None
-                } else if name == "GNU" {
-                    // see https://github.com/hjl-tools/linux-abi/blob/hjl/master/abi.tex
-                    // 1 == NT_GNU_ABI_TAG
-                    //    contains earliest compatible kernel version
-                    // 3 == NT_GNU_BUILD_ID
-                    //    contains an ID that's unique to the exe build
-                    // 5 == NT_GNU_PROPERTY_TYPE_0
-                    //    array of properties
-                    //    GNU_PROPERTY_STACK_SIZE (for runtime loader)
-                    //    GNU_PROPERTY_NO_COPY_ON_PROTECTED (for linker)
-                    None
-                } else {
-                    utils::warn(&format!("Unhandled note name: {name}"));
-                    utils::warn(&format!("   ntype: {ntype}"));
-                    utils::warn(&format!("   offset: {}", contents.offset));
-                    utils::warn(&format!("   size: {}", contents.size));
-                    None
-                }
-            } else {
-                utils::warn(&format!("Failed to read note at offset {}", s.offset));
-                None
-            }
-        }
-
-        let mut notes = HashMap::new();
-        let mut offset = header.ph_offset as usize;
-
-        for _ in 0..header.num_ph_entries {
-            match ProgramHeader::new(reader, offset) {
-                Ok(ph) => {
-                    // Note that core files can sometimes be damaged (typically because they are
-                    // truncated). Not all notes are essential so we'll try to continue even if
-                    // a note cannot be read.
-                    if ph.p_type == SegmentType::Note {
-                        let mut s = Stream::new(reader, ph.p_offset as usize);
-                        while s.offset < (ph.p_offset + ph.p_filesz) as usize {
-                            if let Some((ntype, contents)) = load_note(&mut s) {
-                                // TODO may want to warn if get a second note of the same type
-                                notes.insert(ntype, contents);
-                            }
-                        }
-                    }
-                }
-                Err(err) => {
-                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
-                }
-            }
-            offset += header.ph_entry_size as usize;
-        }
-        Ok(notes)
-    }
-
-    // This is just here so we can report unknown segments.
-    pub fn load_others(reader: &Reader, header: &ElfHeader) -> Result<(), Box<dyn Error>> {
-        let mut offset = header.ph_offset as usize;
-
-        for _ in 0..header.num_ph_entries {
-            match ProgramHeader::new(reader, offset) {
-                Ok(ph) => match ph.p_type {
-                    SegmentType::Null => (),
-                    SegmentType::Load => (),
-                    SegmentType::Note => (),
-                    _ => utils::warn(&format!("Ignoring segment type {:?}", ph.p_type)),
-                },
-                Err(err) => {
-                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
-                }
-            }
-            offset += header.ph_entry_size as usize;
-        }
-        Ok(())
-    }
-
     /// Returns a string from the section string table. Note that index can point into
     /// the middle of a string.
     pub fn find_section_string(&self, str_index: usize) -> Option<String> {
@@ -470,6 +349,126 @@ impl ElfFile {
         } else {
             None
         }
+    }
+}
+
+impl ElfFile {
+    fn load_loads(reader: &Reader, header: &ElfHeader) -> Result<Vec<LoadSegment>, Box<dyn Error>> {
+        let mut loads = Vec::new();
+        let mut offset = header.ph_offset as usize;
+
+        // Even a large core file has a small number of program headers, so it's OK to
+        // re-iterate over them.
+        for _ in 0..header.num_ph_entries {
+            match ProgramHeader::new(reader, offset) {
+                Ok(ph) => {
+                    if ph.p_type == SegmentType::Load {
+                        loads.push(LoadSegment {
+                            offset: ph.p_offset,
+                            size: ph.p_memsz,
+                            vaddr: ph.p_vaddr,
+                            paddr: ph.p_paddr,
+                            flags: ph.p_flags,
+                        });
+                    }
+                }
+                Err(err) => {
+                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
+                }
+            }
+            offset += header.ph_entry_size as usize;
+        }
+        Ok(loads)
+    }
+
+    fn load_notes(
+        reader: &Reader,
+        header: &ElfHeader,
+    ) -> Result<HashMap<NoteType, NoteContents>, Box<dyn Error>> {
+        fn load_note(s: &mut Stream) -> Option<(NoteType, NoteContents)> {
+            if let Ok((name, ntype, contents)) = super::read_note(s) {
+                if name == "CORE" {
+                    if let Some(note_type) = NoteType::from_u32(ntype) {
+                        Some((note_type, contents))
+                    } else {
+                        utils::warn(&format!("Unhandled note type: {ntype}"));
+                        None
+                    }
+                } else if name == "LINUX" {
+                    // TODO looks like register info, see fill_thread_core_info in
+                    // https://android.googlesource.com/kernel/common/+/6e7bfa046de8/fs/binfmt_elf.c
+                    None
+                } else if name == "GNU" {
+                    // see https://github.com/hjl-tools/linux-abi/blob/hjl/master/abi.tex
+                    // 1 == NT_GNU_ABI_TAG
+                    //    contains earliest compatible kernel version
+                    // 3 == NT_GNU_BUILD_ID
+                    //    contains an ID that's unique to the exe build
+                    // 5 == NT_GNU_PROPERTY_TYPE_0
+                    //    array of properties
+                    //    GNU_PROPERTY_STACK_SIZE (for runtime loader)
+                    //    GNU_PROPERTY_NO_COPY_ON_PROTECTED (for linker)
+                    None
+                } else {
+                    utils::warn(&format!("Unhandled note name: {name}"));
+                    utils::warn(&format!("   ntype: {ntype}"));
+                    utils::warn(&format!("   offset: {}", contents.offset));
+                    utils::warn(&format!("   size: {}", contents.size));
+                    None
+                }
+            } else {
+                utils::warn(&format!("Failed to read note at offset {}", s.offset));
+                None
+            }
+        }
+
+        let mut notes = HashMap::new();
+        let mut offset = header.ph_offset as usize;
+
+        for _ in 0..header.num_ph_entries {
+            match ProgramHeader::new(reader, offset) {
+                Ok(ph) => {
+                    // Note that core files can sometimes be damaged (typically because they are
+                    // truncated). Not all notes are essential so we'll try to continue even if
+                    // a note cannot be read.
+                    if ph.p_type == SegmentType::Note {
+                        let mut s = Stream::new(reader, ph.p_offset as usize);
+                        while s.offset < (ph.p_offset + ph.p_filesz) as usize {
+                            if let Some((ntype, contents)) = load_note(&mut s) {
+                                // TODO may want to warn if get a second note of the same type
+                                notes.insert(ntype, contents);
+                            }
+                        }
+                    }
+                }
+                Err(err) => {
+                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
+                }
+            }
+            offset += header.ph_entry_size as usize;
+        }
+        Ok(notes)
+    }
+
+    // This is just here so we can report unknown segments.
+    fn load_others(reader: &Reader, header: &ElfHeader) -> Result<(), Box<dyn Error>> {
+        let mut offset = header.ph_offset as usize;
+
+        for _ in 0..header.num_ph_entries {
+            match ProgramHeader::new(reader, offset) {
+                Ok(ph) => match ph.p_type {
+                    SegmentType::Null => (),
+                    SegmentType::Load => (),
+                    SegmentType::Note => (),
+                    _ => utils::warn(&format!("Ignoring segment type {:?}", ph.p_type)),
+                },
+                Err(err) => {
+                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
+                }
+            }
+            offset += header.ph_entry_size as usize;
+        }
+        Ok(())
     }
 }
 
