@@ -15,12 +15,12 @@ use std::error::Error;
 use std::fs::File;
 
 pub struct ElfFile {
-    // TODO may want to rename this because I think it'll be useable for exes too
     pub header: ElfHeader,
     pub path: std::path::PathBuf,
     pub reader: Reader,
     pub loads: Vec<LoadSegment>,
     pub notes: HashMap<NoteType, NoteContents>,
+    pub sections: Vec<SectionHeader>,
 }
 
 impl ElfFile {
@@ -31,15 +31,17 @@ impl ElfFile {
         let bytes = unsafe { Mmap::map(&file) }?;
         let reader = Reader::new(bytes)?;
         let header = ElfHeader::new(&reader)?;
-        let loads = ElfFile::load_loads(&reader, &header)?;
-        let notes = ElfFile::load_notes(&reader, &header)?;
-        ElfFile::load_others(&reader, &header)?;
+        let loads = ElfFile::load_loads(&reader, &header);
+        let notes = ElfFile::load_notes(&reader, &header);
+        let sections = ElfFile::load_sections(&reader, &header);
+        ElfFile::load_others(&reader, &header);
         Ok(ElfFile {
             path,
             reader,
             header,
             loads,
             notes,
+            sections,
         })
     }
 
@@ -65,41 +67,25 @@ impl ElfFile {
     /// Returns a string from an arbitrary string table. Note that index can point into
     /// the middle of a string.
     pub fn find_string(&self, section_index: u32, str_index: usize) -> Option<String> {
-        let section_index = section_index as u64;
-        let section_size = self.header.section_entry_size as u64;
-        let offset = (self.header.section_offset + section_index * section_size) as usize;
-        match SectionHeader::new(&self.reader, offset) {
-            // TODO really should return an error if indexing past h.offset + h.size
-            Ok(h) => match Stream::new(&self.reader, h.offset as usize + str_index).read_string() {
-                Ok(s) => Some(s),
-                Err(err) => {
-                    utils::warn(&format!("failed to read section string {str_index}: {err}"));
-                    None
-                }
-            },
+        let h = self.find_section(section_index)?;
+        // TODO really should return an error if indexing past h.offset + h.size
+        match Stream::new(&self.reader, h.offset as usize + str_index).read_string() {
+            Ok(s) => Some(s),
             Err(err) => {
-                utils::warn(&format!("failed to read section header at {offset}: {err}"));
+                utils::warn(&format!("failed to read section string {str_index}: {err}"));
                 None
             }
         }
     }
 
     pub fn find_section_name(&self, section_index: u32) -> Option<String> {
-        let section_index = section_index as u64;
-        let section_size = self.header.section_entry_size as u64;
-        let offset = (self.header.section_offset + section_index * section_size) as usize;
-        match SectionHeader::new(&self.reader, offset) {
-            Ok(h) => self.find_default_string(h.name as usize),
-            Err(err) => {
-                utils::warn(&format!("failed to read section header at {offset}: {err}"));
-                None
-            }
-        }
+        let h = self.find_section(section_index)?;
+        self.find_default_string(h.name as usize)
     }
 
     pub fn find_symbols(&self) -> Vec<SymbolTable> {
         let mut tables = Vec::new();
-        for section in ElfFile::find_sections(&self.reader, &self.header) {
+        for section in self.sections.iter() {
             if section.stype == SectionType::SymbolTable {
                 let mut offset = section.offset;
                 let mut entries = Vec::new();
@@ -112,7 +98,10 @@ impl ElfFile {
                     }
                     offset += section.entry_size;
                 }
-                tables.push(SymbolTable { section, entries });
+                tables.push(SymbolTable {
+                    section: section.clone(),
+                    entries,
+                });
             }
         }
         tables
@@ -134,24 +123,8 @@ impl ElfFile {
         segments
     }
 
-    pub fn find_sections(reader: &Reader, header: &ElfHeader) -> Vec<SectionHeader> {
-        let mut sections = Vec::new();
-        let mut offset = header.section_offset as usize;
-
-        for _ in 0..header.num_section_entries {
-            match SectionHeader::new(reader, offset) {
-                Ok(h) => {
-                    if h.stype != SectionType::Null {
-                        sections.push(h);
-                    }
-                }
-                Err(err) => {
-                    utils::warn(&format!("failed to read section header at {offset}: {err}"));
-                }
-            }
-            offset += header.section_entry_size as usize;
-        }
-        sections
+    pub fn find_sections(&self) -> &Vec<SectionHeader> {
+        &self.sections
     }
 
     pub fn find_memory_mapped_files(&self) -> Option<Vec<MemoryMappedFile>> {
@@ -353,7 +326,16 @@ impl ElfFile {
 }
 
 impl ElfFile {
-    fn load_loads(reader: &Reader, header: &ElfHeader) -> Result<Vec<LoadSegment>, Box<dyn Error>> {
+    fn find_section(&self, section_index: u32) -> Option<&SectionHeader> {
+        let section_index = section_index as usize;
+        let section = self.sections.get(section_index);
+        if section.is_none() {
+            utils::warn(&format!("bad section index: {section_index}"));
+        }
+        section
+    }
+
+    fn load_loads(reader: &Reader, header: &ElfHeader) -> Vec<LoadSegment> {
         let mut loads = Vec::new();
         let mut offset = header.ph_offset as usize;
 
@@ -378,13 +360,10 @@ impl ElfFile {
             }
             offset += header.ph_entry_size as usize;
         }
-        Ok(loads)
+        loads
     }
 
-    fn load_notes(
-        reader: &Reader,
-        header: &ElfHeader,
-    ) -> Result<HashMap<NoteType, NoteContents>, Box<dyn Error>> {
+    fn load_notes(reader: &Reader, header: &ElfHeader) -> HashMap<NoteType, NoteContents> {
         fn load_note(s: &mut Stream) -> Option<(NoteType, NoteContents)> {
             if let Ok((name, ntype, contents)) = super::read_note(s) {
                 if name == "CORE" {
@@ -447,19 +426,22 @@ impl ElfFile {
             }
             offset += header.ph_entry_size as usize;
         }
-        Ok(notes)
+        notes
     }
 
     // This is just here so we can report unknown segments.
-    fn load_others(reader: &Reader, header: &ElfHeader) -> Result<(), Box<dyn Error>> {
+    fn load_others(reader: &Reader, header: &ElfHeader) {
         let mut offset = header.ph_offset as usize;
 
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
                 Ok(ph) => match ph.stype {
+                    SegmentType::Dynamic => (), // TODO may need to use this one
+                    SegmentType::Interpreter => (),
+                    SegmentType::Note => (),
                     SegmentType::Null => (),
                     SegmentType::Load => (),
-                    SegmentType::Note => (),
+                    SegmentType::Phdr => (),
                     _ => utils::warn(&format!("Ignoring segment type {:?}", ph.stype)),
                 },
                 Err(err) => {
@@ -468,7 +450,23 @@ impl ElfFile {
             }
             offset += header.ph_entry_size as usize;
         }
-        Ok(())
+    }
+
+    fn load_sections(reader: &Reader, header: &ElfHeader) -> Vec<SectionHeader> {
+        let mut sections = Vec::new();
+        let mut offset = header.section_offset as usize;
+
+        for _ in 0..header.num_section_entries {
+            match SectionHeader::new(reader, offset) {
+                Ok(h) => sections.push(h),
+
+                Err(err) => {
+                    utils::warn(&format!("failed to read section header at {offset}: {err}"))
+                }
+            }
+            offset += header.section_entry_size as usize;
+        }
+        sections
     }
 }
 

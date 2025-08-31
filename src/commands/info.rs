@@ -264,7 +264,7 @@ pub fn info_registers(core: &ElfFile, args: &RegistersArgs) {
 }
 
 pub fn info_sections(core: &ElfFile, args: &TableArgs) {
-    let sections = ElfFile::find_sections(&core.reader, &core.header);
+    let sections = core.find_sections();
 
     let mut builder = TableBuilder::new();
     builder.add_col_r("index", "Index into sections.");
