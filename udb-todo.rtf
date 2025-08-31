@@ -1,0 +1,88 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fnil\fcharset0 Menlo-Regular;\f1\fnil\fcharset0 Menlo-Bold;\f2\fnil\fcharset0 Menlo-Italic;
+}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red57\green0\blue210;\red34\green34\blue34;
+\red170\green28\blue21;\red145\green147\blue17;}
+{\*\expandedcolortbl;;\csgray\c0;\cssrgb\c29344\c16449\c85726;\cssrgb\c17881\c17881\c17881;
+\cssrgb\c72943\c18277\c9974;\cssrgb\c63675\c63470\c7617;}
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f0\fs36 \cf2 \CocoaLigature0 RUST_BACKTRACE=1 cargo run cores/shopping-debug/app-debug\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 \
+udb\cf4 > \cf3 bt\cf2 \
+55957a4931d7\
+55957a49351e\
+7ff8fc0c6d90\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\b relocations
+\f0\b0 \
+r_offset     
+\f2\i the vaddr\
+\pard\pardeftab720\partightenfactor0
+
+\f0\i0 r_info       
+\f2\i symbol table index, so name? or offset into symbols?
+\f0\i0 \
+             
+\f2\i also type of relocation\
+             on 64 bit also data and id\
+
+\f0\i0 addend       
+\f2\i constant addend used to compute the value to be stored into the relocatable field             \
+\
+
+\f0\i0 sh_info      
+\f2\i identifies the symbol table section\
+
+\f0\i0 sh_link      
+\f2\i (optional) section to modify\
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\i0\b fix --hex for sections\
+create a udb-tdo.rtf file\
+refactor\
+	add elves struct\
+	should have fields for core and exe\
+	need options to load either one of these\
+		maybe just two positional args\
+		can examine them to see which is which\
+		maybe even allow more files (eg to load obj files)\
+	rely more on self methods\
+	should types like Section and Segment be less dumb?\
+experiment with adding types like SectionIndex, SegmentIndex, StringIndex, Address, Offset\
+figure out how to map symbol values to virtual addresses\
+	may want an option for this
+\f0\b0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf3 \
+udb\cf4 > \cf3 hex --count=281 0x3855\cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\b \cf5 couldn't find a load segment: treating addr as an offset from the start of the ELF file
+\f0\b0 \cf2 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf6 0000: \cf2 67 65 74 5f 6e 61 6d 65  67 65 74 5f 6e 61 6d 65    get_name.curelm.\
+\cf6 0010: \cf2 73 69 7a 65 5f 74 00 69  73 69 7a 65 5f 74 00 69    size_t.item.coun\
+\cf6 0020: \cf2 74 00 2f 68 6f 6d 65 2f  74 00 2f 68 6f 6d 65 2f    t./home/vorisek/\
+\cf6 0030: \cf2 73 68 6f 70 70 69 6e 67  73 68 6f 70 70 69 6e 67    shopping.unsigne\
+\cf6 0040: \cf2 64 20 63 68 61 72 00 73  64 20 63 68 61 72 00 73    d.char.short.uns\
+\cf6 0050: \cf2 69 67 6e 65 64 20 69 6e  69 67 6e 65 64 20 69 6e    igned.int.add_to\
+\cf6 0060: \cf2 5f 63 61 72 74 00 6c 65  5f 63 61 72 74 00 6c 65    _cart.le_next.sh\
+\cf6 0070: \cf2 6f 72 74 20 69 6e 74 00  6f 72 74 20 69 6e 74 00    ort.int.lh_first\
+\cf6 0080: \cf2 00 73 68 6f 70 70 69 6e  00 73 68 6f 70 70 69 6e    .shopping_cart.l\
+\cf6 0090: \cf2 6f 6e 67 20 6c 6f 6e 67  6f 6e 67 20 6c 6f 6e 67    ong.long.unsigne\
+\cf6 00a0: \cf2 64 20 69 6e 74 00 66 72  64 20 69 6e 74 00 66 72    d.int.free.long.\
+\cf6 00b0: \cf2 6c 6f 6e 67 20 69 6e 74  6c 6f 6e 67 20 69 6e 74    long.int.GNU.C17\
+\cf6 00c0: \cf2 20 31 31 2e 34 2e 30 00  20 31 31 2e 34 2e 30 00    .11.4.0.printf.l\
+\cf6 00d0: \cf2 65 5f 70 72 65 76 00 72  65 5f 70 72 65 76 00 72    e_prev.remove_fr\
+\cf6 00e0: \cf2 6f 6d 5f 63 61 72 74 00  6f 6d 5f 63 61 72 74 00    om_cart.item.c.s\
+\cf6 00f0: \cf2 68 6f 70 70 69 6e 67 5f  68 6f 70 70 69 6e 67 5f    hopping_head.get\
+\cf6 0100: \cf2 5f 63 6f 73 74 00 6d 61  5f 63 6f 73 74 00 6d 61    _cost.malloc.mai\
+\cf6 0110: \cf2 6e 2e 63 00 6d 61 69 6e  6e 2e 63 00 6d 61 69 6e    n.c.main.\
+}
