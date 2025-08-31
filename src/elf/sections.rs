@@ -17,6 +17,42 @@ const COMPRESSED_FLAG: u64 = 1 << 11; // Section with compressed data.
 const MASKOS_FLAG: u64 = 0x0ff00000; // OS-specific. 
 const MASKPROC_FLAG: u64 = 0xf0000000; // Processor-specific
 
+/// Describes a section.
+#[derive(Clone)]
+pub struct SectionHeader {
+    // Elf32_Shdr or Elf64_Shdr, see hthttps://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
+    /// Index into the string table. Zero means no name.
+    pub name: u32,
+
+    /// Type of the section.
+    pub stype: SectionType,
+
+    /// Write, alloc, and/or exec.
+    pub flags: u64,
+
+    /// Virtual address at execution.
+    pub vaddr: u64,
+
+    /// Offset into the ELF file for the start of the section.
+    pub offset: u64,
+
+    /// Section size in bytes.
+    pub size: u64,
+
+    /// Link to another section with related information, usually a string
+    /// or symbol table.
+    pub link: u32,
+
+    /// Additional section info.
+    pub info: u32,
+
+    /// Section alignment.
+    pub align: u64,
+
+    /// Set if the section holds a table of entries.
+    pub entry_size: u64,
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SectionType {
     /// Dynamic linking information.
@@ -102,41 +138,6 @@ impl SectionType {
             }
         }
     }
-}
-
-// Elf32_Shdr or Elf64_Shdr, see hthttps://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
-#[derive(Clone)]
-pub struct SectionHeader {
-    /// Index into the string table. Zero means no name.
-    pub name: u32,
-
-    /// Type of the section.
-    pub stype: SectionType,
-
-    /// Write, alloc, and/or exec.
-    pub flags: u64,
-
-    /// Virtual address at execution.
-    pub vaddr: u64,
-
-    /// Offset into the ELF file for the start of the section.
-    pub offset: u64,
-
-    /// Section size in bytes.
-    pub size: u64,
-
-    /// Link to another section with related information, usually a string
-    /// or symbol table.
-    pub link: u32,
-
-    /// Additional section info.
-    pub info: u32,
-
-    /// Section alignment.
-    pub align: u64,
-
-    /// Set if the section holds a table of entries.
-    pub entry_size: u64,
 }
 
 impl SectionHeader {

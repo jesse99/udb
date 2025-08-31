@@ -58,7 +58,7 @@ impl ElfFile {
 
     /// Returns a string from the section string table. Note that index can point into
     /// the middle of a string.
-    pub fn find_section_string(&self, str_index: usize) -> Option<String> {
+    pub fn find_default_string(&self, str_index: usize) -> Option<String> {
         self.find_string(self.header.string_table_index as u32, str_index)
     }
 
@@ -89,7 +89,7 @@ impl ElfFile {
         let section_size = self.header.section_entry_size as u64;
         let offset = (self.header.section_offset + section_index * section_size) as usize;
         match SectionHeader::new(&self.reader, offset) {
-            Ok(h) => self.find_section_string(h.name as usize),
+            Ok(h) => self.find_default_string(h.name as usize),
             Err(err) => {
                 utils::warn(&format!("failed to read section header at {offset}: {err}"));
                 None
@@ -362,13 +362,13 @@ impl ElfFile {
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
                 Ok(ph) => {
-                    if ph.p_type == SegmentType::Load {
+                    if ph.stype == SegmentType::Load {
                         loads.push(LoadSegment {
-                            offset: ph.p_offset,
-                            size: ph.p_memsz,
-                            vaddr: ph.p_vaddr,
-                            paddr: ph.p_paddr,
-                            flags: ph.p_flags,
+                            offset: ph.offset,
+                            size: ph.mem_size,
+                            vaddr: ph.vaddr,
+                            paddr: ph.paddr,
+                            flags: ph.flags,
                         });
                     }
                 }
@@ -431,9 +431,9 @@ impl ElfFile {
                     // Note that core files can sometimes be damaged (typically because they are
                     // truncated). Not all notes are essential so we'll try to continue even if
                     // a note cannot be read.
-                    if ph.p_type == SegmentType::Note {
-                        let mut s = Stream::new(reader, ph.p_offset as usize);
-                        while s.offset < (ph.p_offset + ph.p_filesz) as usize {
+                    if ph.stype == SegmentType::Note {
+                        let mut s = Stream::new(reader, ph.offset as usize);
+                        while s.offset < (ph.offset + ph.file_size) as usize {
                             if let Some((ntype, contents)) = load_note(&mut s) {
                                 // TODO may want to warn if get a second note of the same type
                                 notes.insert(ntype, contents);
@@ -456,11 +456,11 @@ impl ElfFile {
 
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
-                Ok(ph) => match ph.p_type {
+                Ok(ph) => match ph.stype {
                     SegmentType::Null => (),
                     SegmentType::Load => (),
                     SegmentType::Note => (),
-                    _ => utils::warn(&format!("Ignoring segment type {:?}", ph.p_type)),
+                    _ => utils::warn(&format!("Ignoring segment type {:?}", ph.stype)),
                 },
                 Err(err) => {
                     utils::warn(&format!("failed to read program header at {offset}: {err}"))

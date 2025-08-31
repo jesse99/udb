@@ -289,7 +289,7 @@ pub fn info_sections(core: &ElfFile, args: &TableArgs) {
     // by index...
     for (i, section) in sections.iter().enumerate() {
         add_field!(builder, "index", i); // sections are often referenced by index so this is handy
-        match core.find_section_string(section.name as usize) {
+        match core.find_default_string(section.name as usize) {
             Some(n) => {
                 add_field!(builder, "name", n);
             }
@@ -330,18 +330,13 @@ pub fn info_segments(core: &ElfFile, args: &TableArgs) {
     builder.add_col_r("flags", "executable, writeable, and/or readable");
 
     for segment in segments.iter() {
-        add_field!(builder, "type", "{:?}", segment.p_type);
-        add_field!(builder, "offset", "{:x}", segment.p_offset);
-        add_field!(builder, "vaddr", "{:x}", segment.p_vaddr);
-        add_field!(builder, "paddr", "{:x}", segment.p_paddr);
-        add_field!(builder, "file size", "{:x}", segment.p_filesz);
-        add_field!(builder, "memory size", "{:x}", segment.p_memsz);
-        add_field!(
-            builder,
-            "flags",
-            "{}",
-            ProgramHeader::flags(segment.p_flags)
-        );
+        add_field!(builder, "type", "{:?}", segment.stype);
+        add_field!(builder, "offset", "{:x}", segment.offset);
+        add_field!(builder, "vaddr", "{:x}", segment.vaddr);
+        add_field!(builder, "paddr", "{:x}", segment.paddr);
+        add_field!(builder, "file size", "{:x}", segment.file_size);
+        add_field!(builder, "memory size", "{:x}", segment.mem_size);
+        add_field!(builder, "flags", "{}", ProgramHeader::flags(segment.flags));
     }
 
     builder.println(args.titles, args.explain);

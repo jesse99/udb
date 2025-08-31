@@ -7,6 +7,30 @@ const EXECUTE_FLAG: u32 = 0x1;
 const WRITE_FLAG: u32 = 0x2;
 const READ_FLAG: u32 = 0x4;
 
+/// Describes a segment.
+pub struct ProgramHeader {
+    // Elf64_Phdr or Elf32_Phdr, see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html
+    pub stype: SegmentType,
+
+    /// Offset to the first byte of the segment.
+    pub offset: u64,
+
+    /// Address of the segment visible to users.
+    pub vaddr: u64,
+
+    /// Address of the segment within the core file.
+    pub paddr: u64,
+
+    /// Number of bytes in the segment in the core file.
+    pub file_size: u64,
+
+    /// Number of bytes in the segment in memory.
+    pub mem_size: u64,
+
+    /// Read/Write/Execute flags.
+    pub flags: u32,
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum SegmentType {
     /// Not to be used: either it's a segment that is intended to be not used or one
@@ -92,30 +116,50 @@ impl LoadSegment {
     }
 }
 
-// Elf64_Phdr or Elf32_Phdr, see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html
-pub struct ProgramHeader {
-    pub p_type: SegmentType,
-
-    /// Offset to the first byte of the segment.
-    pub p_offset: u64,
-
-    /// Address of the segment visible to users.
-    pub p_vaddr: u64,
-
-    /// Address of the segment within the core file.
-    pub p_paddr: u64,
-
-    /// Number of bytes in the segment in the core file.
-    pub p_filesz: u64,
-
-    /// Number of bytes in the segment in memory.
-    pub p_memsz: u64,
-
-    /// Read/Write/Execute flags.
-    pub p_flags: u32,
-}
-
 impl ProgramHeader {
+    pub fn new(reader: &Reader, offset: usize) -> Result<Self, Box<dyn Error>> {
+        // Field sizes and order differ between 32-bit and 64-bit ELF files,
+        // see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html.
+        let mut s = Stream::new(reader, offset);
+        if reader.sixty_four_bit {
+            let p_type = SegmentType::from_u32(s.read_word()?);
+            let p_flags = s.read_word()?;
+            let p_offset = s.read_offset()?;
+            let p_vaddr = s.read_addr()?;
+            let p_paddr = s.read_addr()?;
+            let p_filesz = s.read_xword()?;
+            let p_memsz = s.read_xword()?;
+            let _p_align = s.read_xword()?;
+            Ok(ProgramHeader {
+                stype: p_type,
+                flags: p_flags,
+                offset: p_offset,
+                vaddr: p_vaddr,
+                paddr: p_paddr,
+                file_size: p_filesz,
+                mem_size: p_memsz,
+            })
+        } else {
+            let p_type = SegmentType::from_u32(s.read_word()?);
+            let p_offset = s.read_offset()?;
+            let p_vaddr = s.read_addr()?;
+            let p_paddr = s.read_addr()?;
+            let p_filesz = s.read_word()? as u64;
+            let p_memsz = s.read_word()? as u64;
+            let p_flags = s.read_word()?;
+            let _p_align = s.read_word()? as u64;
+            Ok(ProgramHeader {
+                stype: p_type,
+                flags: p_flags,
+                offset: p_offset,
+                vaddr: p_vaddr,
+                paddr: p_paddr,
+                file_size: p_filesz,
+                mem_size: p_memsz,
+            })
+        }
+    }
+
     pub fn flags(flags: u32) -> String {
         let mut result = String::new();
         if flags & EXECUTE_FLAG != 0 {
@@ -134,50 +178,5 @@ impl ProgramHeader {
             result.push('-');
         }
         result
-    }
-}
-
-impl ProgramHeader {
-    pub fn new(reader: &Reader, offset: usize) -> Result<Self, Box<dyn Error>> {
-        // Field sizes and order differ between 32-bit and 64-bit ELF files,
-        // see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html.
-        let mut s = Stream::new(reader, offset);
-        if reader.sixty_four_bit {
-            let p_type = SegmentType::from_u32(s.read_word()?);
-            let p_flags = s.read_word()?;
-            let p_offset = s.read_offset()?;
-            let p_vaddr = s.read_addr()?;
-            let p_paddr = s.read_addr()?;
-            let p_filesz = s.read_xword()?;
-            let p_memsz = s.read_xword()?;
-            let _p_align = s.read_xword()?;
-            Ok(ProgramHeader {
-                p_type,
-                p_flags,
-                p_offset,
-                p_vaddr,
-                p_paddr,
-                p_filesz,
-                p_memsz,
-            })
-        } else {
-            let p_type = SegmentType::from_u32(s.read_word()?);
-            let p_offset = s.read_offset()?;
-            let p_vaddr = s.read_addr()?;
-            let p_paddr = s.read_addr()?;
-            let p_filesz = s.read_word()? as u64;
-            let p_memsz = s.read_word()? as u64;
-            let p_flags = s.read_word()?;
-            let _p_align = s.read_word()? as u64;
-            Ok(ProgramHeader {
-                p_type,
-                p_flags,
-                p_offset,
-                p_vaddr,
-                p_paddr,
-                p_filesz,
-                p_memsz,
-            })
-        }
     }
 }
