@@ -46,6 +46,9 @@ pub enum InfoAction {
     /// Show memory mapped files
     Mapped(TableArgs),
 
+    /// Show sections
+    Notes(TableArgs),
+
     /// Show information the process associated with the core file
     Process(ExplainArgs),
 

@@ -1,7 +1,7 @@
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
 use crate::debug::SymbolIndex;
-use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType};
+use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader};
 use crate::repl::{ExplainArgs, RegistersArgs};
 use crate::utils;
 use crate::utils::Styling;
@@ -169,6 +169,23 @@ pub fn info_mapped(core: &ElfFile, args: &TableArgs) {
     }
 }
 
+pub fn info_notes(file: &ElfFile, args: &TableArgs) {
+    let mut builder = TableBuilder::new();
+    builder.add_col_l("name", "note namespace");
+    builder.add_col_l("type", "the type of the note");
+    builder.add_col_r("offset", "offset into the ELF file (hex)");
+    builder.add_col_r("size", "size of the note");
+
+    for note in file.notes.iter() {
+        add_field!(builder, "name", note.name);
+        add_field!(builder, "type", "{:?}", note.ntype);
+        add_field!(builder, "offset", "{:x}", note.contents.offset);
+        add_field!(builder, "size", note.contents.size);
+    }
+
+    builder.println(args.titles, args.explain);
+}
+
 pub fn info_process(core: &ElfFile, args: &ExplainArgs) {
     if let Some(status) = core.find_prstatus() {
         let mut b = SimpleTableBuilder::new();
@@ -267,23 +284,23 @@ pub fn info_sections(core: &ElfFile, args: &TableArgs) {
     let sections = core.find_sections();
 
     let mut builder = TableBuilder::new();
-    builder.add_col_r("index", "Index into sections.");
-    builder.add_col_l("name", "Index into the string table. Zero means no name.");
-    builder.add_col_l("type", "Type of the section.");
-    builder.add_col_r("vaddr", "Virtual address at execution.");
+    builder.add_col_r("index", "index into sections.");
+    builder.add_col_l("name", "index into the string table. Zero means no name.");
+    builder.add_col_l("type", "type of the section.");
+    builder.add_col_r("vaddr", "virtual address at execution.");
     builder.add_col_r(
         "offset",
-        "Offset into the ELF file for the start of the section.",
+        "offset into the ELF file for the start of the section.",
     );
-    builder.add_col_r("size", "Section size in bytes.");
-    builder.add_col_r("entry_size", "Set if the section holds a table of entries.");
-    builder.add_col_r("align", "Section alignment.");
+    builder.add_col_r("size", "section size in bytes.");
+    builder.add_col_r("entry_size", "set if the section holds a table of entries.");
+    builder.add_col_r("align", "section alignment.");
     builder.add_col_r(
         "link",
-        "Link to another section with related information, usually a string or symbol table.",
+        "link to another section with related information, usually a string or symbol table.",
     );
-    builder.add_col_r("info", "Additional section info");
-    builder.add_col_l("flags", "Write, alloc, and/or exec.");
+    builder.add_col_r("info", "additional section info");
+    builder.add_col_l("flags", "write, alloc, and/or exec.");
 
     // Would be kind of nice to sort these by name but they are referenced sometimes
     // by index...

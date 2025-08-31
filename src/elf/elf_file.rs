@@ -5,12 +5,11 @@ use super::{
 };
 use crate::debug::{SymbolTable, SymbolTableEntry};
 use crate::elf::{
-    ChildSignal, FaultSignal, KillSignal, PosixSignal, SectionHeader, SectionType, SigInfo,
-    SignalDetails,
+    ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, PosixSignal, SectionHeader,
+    SectionType, SigInfo, SignalDetails,
 };
 use crate::utils::{self, warn};
 use memmap2::Mmap;
-use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 
@@ -18,9 +17,9 @@ pub struct ElfFile {
     pub header: ElfHeader,
     pub path: std::path::PathBuf,
     pub reader: Reader,
-    pub loads: Vec<LoadSegment>,
-    pub notes: HashMap<NoteType, NoteContents>,
-    pub sections: Vec<SectionHeader>,
+    pub loads: Vec<LoadSegment>,      //
+    pub notes: Vec<Note>,             // TODO what about exe?
+    pub sections: Vec<SectionHeader>, // not used for core files
 }
 
 impl ElfFile {
@@ -176,8 +175,8 @@ impl ElfFile {
             Ok(files)
         }
 
-        if let Some(contents) = self.notes.get(&NoteType::File) {
-            let mut s = Stream::new(&self.reader, contents.offset);
+        if let Some(note) = self.find_core_note(CoreNoteType::File) {
+            let mut s = Stream::new(&self.reader, note.contents.offset);
             match get_memory_mapped_files(&mut s) {
                 Ok(files) => Some(files),
                 Err(e) => {
@@ -188,6 +187,20 @@ impl ElfFile {
         } else {
             None
         }
+    }
+
+    pub fn find_core_note(&self, ntype: CoreNoteType) -> Option<&Note> {
+        for note in self.notes.iter() {
+            match &note.ntype {
+                NoteType::Core(t) => {
+                    if *t == ntype {
+                        return Some(note);
+                    }
+                }
+                _ => (),
+            }
+        }
+        None
     }
 
     pub fn find_prstatus(&self) -> Option<PrStatus> {
@@ -234,8 +247,8 @@ impl ElfFile {
             })
         }
 
-        if let Some(contents) = self.notes.get(&NoteType::PrStatus) {
-            let mut s = Stream::new(&self.reader, contents.offset);
+        if let Some(note) = self.find_core_note(CoreNoteType::PrStatus) {
+            let mut s = Stream::new(&self.reader, note.contents.offset);
             match get_prstatus(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {
@@ -310,8 +323,8 @@ impl ElfFile {
             })
         }
 
-        if let Some(contents) = self.notes.get(&NoteType::SigInfo) {
-            let mut s = Stream::new(&self.reader, contents.offset);
+        if let Some(note) = self.find_core_note(CoreNoteType::SigInfo) {
+            let mut s = Stream::new(&self.reader, note.contents.offset);
             match get_signal_info(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {
@@ -363,45 +376,21 @@ impl ElfFile {
         loads
     }
 
-    fn load_notes(reader: &Reader, header: &ElfHeader) -> HashMap<NoteType, NoteContents> {
-        fn load_note(s: &mut Stream) -> Option<(NoteType, NoteContents)> {
+    fn load_notes(reader: &Reader, header: &ElfHeader) -> Vec<Note> {
+        fn load_note(s: &mut Stream) -> Option<Note> {
             if let Ok((name, ntype, contents)) = super::read_note(s) {
-                if name == "CORE" {
-                    if let Some(note_type) = NoteType::from_u32(ntype) {
-                        Some((note_type, contents))
-                    } else {
-                        utils::warn(&format!("Unhandled note type: {ntype}"));
-                        None
-                    }
-                } else if name == "LINUX" {
-                    // TODO looks like register info, see fill_thread_core_info in
-                    // https://android.googlesource.com/kernel/common/+/6e7bfa046de8/fs/binfmt_elf.c
-                    None
-                } else if name == "GNU" {
-                    // see https://github.com/hjl-tools/linux-abi/blob/hjl/master/abi.tex
-                    // 1 == NT_GNU_ABI_TAG
-                    //    contains earliest compatible kernel version
-                    // 3 == NT_GNU_BUILD_ID
-                    //    contains an ID that's unique to the exe build
-                    // 5 == NT_GNU_PROPERTY_TYPE_0
-                    //    array of properties
-                    //    GNU_PROPERTY_STACK_SIZE (for runtime loader)
-                    //    GNU_PROPERTY_NO_COPY_ON_PROTECTED (for linker)
-                    None
-                } else {
-                    utils::warn(&format!("Unhandled note name: {name}"));
-                    utils::warn(&format!("   ntype: {ntype}"));
-                    utils::warn(&format!("   offset: {}", contents.offset));
-                    utils::warn(&format!("   size: {}", contents.size));
-                    None
-                }
+                Some(Note {
+                    name: name.clone(),
+                    ntype: NoteType::new(&name, ntype),
+                    contents,
+                })
             } else {
                 utils::warn(&format!("Failed to read note at offset {}", s.offset));
                 None
             }
         }
 
-        let mut notes = HashMap::new();
+        let mut notes = Vec::new();
         let mut offset = header.ph_offset as usize;
 
         for _ in 0..header.num_ph_entries {
@@ -413,9 +402,9 @@ impl ElfFile {
                     if ph.stype == SegmentType::Note {
                         let mut s = Stream::new(reader, ph.offset as usize);
                         while s.offset < (ph.offset + ph.file_size) as usize {
-                            if let Some((ntype, contents)) = load_note(&mut s) {
+                            if let Some(note) = load_note(&mut s) {
                                 // TODO may want to warn if get a second note of the same type
-                                notes.insert(ntype, contents);
+                                notes.push(note);
                             }
                         }
                     }

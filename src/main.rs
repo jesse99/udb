@@ -112,25 +112,7 @@ fn load_core(path: PathBuf) -> ElfFile {
         }
     }
 }
-// TODO
-// add an `info sections` command
-// can we get function names from the function pointers?
-// can we get the function parameters?
-// rename Core? maybe to Elf?
-// backup
-// verify that pem core still works
-// need a test for not a core file
-// add a todo.rtf file
-// probably want to uninstall mactex, see https://www.tug.org/mactex/uninstalling.html
-//    maybe try to install the basic version
-// add some interactive commands
-//    should be able to run a command from bash
-//    maybe allow them to be chained somehow
-// add tests for command output?
-//    have to be careful with stuff like addresses
-//    or is it better to have tests for the backend data?
-//       that's probably more stable
-//       tho it means the formatted output isnt tested...
+
 fn main() {
     utils::generate_style_file();
 
@@ -160,6 +142,7 @@ fn main() {
             InfoAction::Header(args) => commands::info_header(&core, &args),
             InfoAction::Loads(args) => commands::info_loads(&core, &args),
             InfoAction::Mapped(args) => commands::info_mapped(&core, &args),
+            InfoAction::Notes(args) => commands::info_notes(&core, &args),
             InfoAction::Process(args) => commands::info_process(&core, &args),
             InfoAction::Registers(args) => commands::info_registers(&core, &args),
             InfoAction::Sections(args) => commands::info_sections(&core, &args),

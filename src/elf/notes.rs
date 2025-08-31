@@ -4,8 +4,21 @@ use super::Stream;
 use crate::utils;
 use std::error::Error;
 
-#[derive(Debug, Eq, Hash, PartialEq)]
+pub struct Note {
+    pub name: String,
+    pub ntype: NoteType,
+    pub contents: NoteContents,
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub enum NoteType {
+    Core(CoreNoteType),
+    Generic(GenericNoteType),
+    Gnu(GnuNoteType),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum CoreNoteType {
     /// The AuxV note is AT_SYSINFO_EHDR which contains a small shared library
     /// mapped into the address space of all user-space applications. It's used
     /// to speed up calling common kernel functions. See https://man7.org/linux/man-pages/man7/vdso.7.html
@@ -14,32 +27,100 @@ pub enum NoteType {
     /// Memory-mapped files, see fill_files_note in https://android.googlesource.com/kernel/common/+/6e7bfa046de8/fs/binfmt_elf.c
     File,
 
+    /// Type we don't handle.
+    Other,
+
+    Platform,
+
+    PStatus,
+
     /// Signal info, pid, etc. See elf_prstatus in https://docs.huihoo.com/doxygen/linux/kernel/3.7/uapi_2linux_2elfcore_8h_source.html.
     PrStatus,
 
     /// Floating point register values.
-    PrFPReg,
+    FpRegSet,
 
     /// Process state info, e.g. whether it's running, sleeping, or a zombie. Also the
     /// name and arguments for the executable. See elf_prpsinfo in https://docs.huihoo.com/doxygen/linux/kernel/3.7/uapi_2linux_2elfcore_8h_source.html
     PrPsInfo, // TODO expose some of this
 
+    PsInfo,
+
     /// Seen this documented as a elf_siginfo which seems silly because PrStatus has that.
     /// It's also 80 bytes which is much larger than that so I think it may be a siginfo_t
     /// which has the usual signal stuff plus the fault address. TODO update this comment
     SigInfo,
+
+    TaskStruct,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum GnuNoteType {
+    AbiTag,
+    BuildId,
+    HwCap,
+    GoldVersion,
+    Other,
+    PackagingMetadata,
+    PropType0,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum GenericNoteType {
+    Arch,
+    GnuBuildAttrOpen,
+    GnuBuildAttrFunc,
+    Other,
+    Version,
 }
 
 impl NoteType {
-    pub fn from_u32(value: u32) -> Option<Self> {
-        match value {
-            1 => Some(NoteType::PrStatus), // see https://docs.huihoo.com/doxygen/linux/kernel/3.7/include_2uapi_2linux_2elf_8h_source.html
-            2 => Some(NoteType::PrFPReg),
-            3 => Some(NoteType::PrPsInfo),
-            6 => Some(NoteType::AuxV),
-            0x53494749 => Some(NoteType::SigInfo),
-            0x46494c45 => Some(NoteType::File),
-            _ => None,
+    pub fn new(name: &str, value: u32) -> Self {
+        if name == "CORE" {
+            match value {
+                1 => NoteType::Core(CoreNoteType::PrStatus), // see https://docs.huihoo.com/doxygen/linux/kernel/3.7/include_2uapi_2linux_2elf_8h_source.html
+                2 => NoteType::Core(CoreNoteType::FpRegSet), // and https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html
+                3 => NoteType::Core(CoreNoteType::PrPsInfo),
+                4 => NoteType::Core(CoreNoteType::TaskStruct),
+                5 => NoteType::Core(CoreNoteType::Platform),
+                6 => NoteType::Core(CoreNoteType::AuxV),
+                10 => NoteType::Core(CoreNoteType::PStatus),
+                13 => NoteType::Core(CoreNoteType::PsInfo),
+                0x53494749 => NoteType::Core(CoreNoteType::SigInfo),
+                0x46494c45 => NoteType::Core(CoreNoteType::File),
+                _ => {
+                    utils::warn(&format!("bad core note type: {value}"));
+                    NoteType::Core(CoreNoteType::Other)
+                }
+            }
+        } else if name == "GNU" {
+            match value {
+                1 => NoteType::Gnu(GnuNoteType::AbiTag), // see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html
+                2 => NoteType::Gnu(GnuNoteType::HwCap),
+                3 => NoteType::Gnu(GnuNoteType::BuildId),
+                4 => NoteType::Gnu(GnuNoteType::GoldVersion),
+                5 => NoteType::Gnu(GnuNoteType::PropType0),
+                0xcafe1a7e => NoteType::Gnu(GnuNoteType::PackagingMetadata),
+                _ => {
+                    utils::warn(&format!("bad gnu note type: {value}"));
+                    NoteType::Gnu(GnuNoteType::Other)
+                }
+            }
+        } else {
+            match value {
+                1 => NoteType::Generic(GenericNoteType::Version),
+                2 => NoteType::Generic(GenericNoteType::Arch),
+
+                // TODO no idea what this one is though it is almost all zeros
+                // and contains "early_init.strnl" in the middle
+                514 => NoteType::Generic(GenericNoteType::Other),
+                0x100 => NoteType::Generic(GenericNoteType::GnuBuildAttrOpen),
+                0x101 => NoteType::Generic(GenericNoteType::GnuBuildAttrFunc),
+                _ => {
+                    utils::warn(&format!("bad generic note type: {value}"));
+                    NoteType::Generic(GenericNoteType::Other)
+                }
+            }
         }
     }
 }
