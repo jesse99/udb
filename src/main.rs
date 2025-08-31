@@ -9,7 +9,7 @@ use clap_repl::reedline::{
     DefaultPrompt, FileBackedHistory, Highlighter, Prompt, PromptEditMode, PromptHistorySearch,
     StyledText,
 };
-use elf::Core;
+use elf::ElfFile;
 use nu_ansi_term::{Color, Style};
 use repl::InfoAction;
 use repl::Repl;
@@ -103,8 +103,8 @@ impl MyPrompt {
     }
 }
 
-fn load_core(path: PathBuf) -> Core {
-    match Core::new(path.clone()) {
+fn load_core(path: PathBuf) -> ElfFile {
+    match ElfFile::new(path.clone()) {
         Ok(core) => core,
         Err(e) => {
             warn(&format!("Couldn't load {}: {e}", path.display()));

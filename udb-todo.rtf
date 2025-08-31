@@ -42,9 +42,7 @@ r_offset
 \
 \pard\pardeftab720\partightenfactor0
 
-\f1\i0\b fix --hex for sections\
-create a udb-tdo.rtf file\
-refactor\
+\f1\i0\b refactor\
 	add elves struct\
 	should have fields for core and exe\
 	need options to load either one of these\
@@ -53,6 +51,9 @@ refactor\
 		maybe even allow more files (eg to load obj files)\
 	rely more on self methods\
 	should types like Section and Segment be less dumb?\
+fix clippy warnings\
+what are the notes in the exe?\
+fix --hex for sections\
 experiment with adding types like SectionIndex, SegmentIndex, StringIndex, Address, Offset\
 figure out how to map symbol values to virtual addresses\
 	may want an option for this
@@ -85,4 +86,16 @@ udb\cf4 > \cf3 hex --count=281 0x3855\cf2 \
 \cf6 00f0: \cf2 68 6f 70 70 69 6e 67 5f  68 6f 70 70 69 6e 67 5f    hopping_head.get\
 \cf6 0100: \cf2 5f 63 6f 73 74 00 6d 61  5f 63 6f 73 74 00 6d 61    _cost.malloc.mai\
 \cf6 0110: \cf2 6e 2e 63 00 6d 61 69 6e  6e 2e 63 00 6d 61 69 6e    n.c.main.\
+\
+RUST_BACKTRACE=1 cargo run cores/shopping-debug/app-debug\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+
+\f1\b \cf5 Ignoring segment type Phdr
+\f0\b0 \cf2 \
+
+\f1\b \cf5 Ignoring segment type Interpreter
+\f0\b0 \cf2 \
+
+\f1\b \cf5 Ignoring segment type Dynamic
+\f0\b0 \cf2 \
 }

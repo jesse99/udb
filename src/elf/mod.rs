@@ -20,14 +20,14 @@
 //! Section headers identify sections. Sections are used for static linking and don't
 //! appear in core files. Section headers have name, type, vaddr, offset, size, etc.
 //! There are a lot of types including for the symbol table, string table, etc.
-pub mod core;
+pub mod elf_file;
 pub mod header;
 pub mod io;
 pub mod notes;
 pub mod sections;
 pub mod segments;
 
-pub use core::*;
+pub use elf_file::*;
 pub use header::*;
 pub use io::*;
 pub use notes::*;

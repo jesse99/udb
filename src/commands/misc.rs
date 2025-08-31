@@ -1,14 +1,14 @@
 use crate::elf::LoadSegment;
 use crate::repl::HexdumpOffsets;
 use crate::{
-    elf::{Core, Reader},
+    elf::{ElfFile, Reader},
     repl::{FindArgs, HexdumpArgs},
     utils::warn,
 };
 use std::error::Error;
 
 /// Returns pointers to the instructions within the functions in the current call chain.
-fn raw_backtrace(core: &Core) -> Result<Vec<u64>, Box<dyn Error>> {
+fn raw_backtrace(core: &ElfFile) -> Result<Vec<u64>, Box<dyn Error>> {
     // TODO move this into debug module
     // see https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64
     let mut bt = Vec::new();
@@ -44,14 +44,14 @@ fn raw_backtrace(core: &Core) -> Result<Vec<u64>, Box<dyn Error>> {
     Ok(bt)
 }
 
-pub fn backtrace(core: &Core) {
+pub fn backtrace(core: &ElfFile) {
     match raw_backtrace(&core) {
         Ok(bt) => bt.iter().for_each(|a| println!("{a:x}")),
         Err(e) => println!("{e}"),
     }
 }
 
-pub fn find(core: &Core, args: &FindArgs) {
+pub fn find(core: &ElfFile, args: &FindArgs) {
     fn match_bytes(reader: &Reader, i: usize, bytes: &Vec<u8>) -> bool {
         for (j, byte) in bytes.iter().enumerate() {
             match reader.read_byte(i + j) {
@@ -66,7 +66,7 @@ pub fn find(core: &Core, args: &FindArgs) {
         true
     }
 
-    fn search_load_segments(core: &Core, args: &FindArgs, bytes: &Vec<u8>) {
+    fn search_load_segments(core: &ElfFile, args: &FindArgs, bytes: &Vec<u8>) {
         let mut count = 0;
         for load in core.loads.iter() {
             let mut i = 0;
@@ -98,7 +98,7 @@ pub fn find(core: &Core, args: &FindArgs) {
         }
     }
 
-    fn search_all(core: &Core, args: &FindArgs, bytes: &Vec<u8>) {
+    fn search_all(core: &ElfFile, args: &FindArgs, bytes: &Vec<u8>) {
         let mut count = 0;
         let mut offset = 0;
         let mut offsets = Vec::new(); // we'll print addresses first
@@ -156,7 +156,7 @@ pub fn find(core: &Core, args: &FindArgs) {
         }
     }
 
-    fn find(core: &Core, args: &FindArgs, bytes: &Vec<u8>) {
+    fn find(core: &ElfFile, args: &FindArgs, bytes: &Vec<u8>) {
         if args.all {
             search_all(core, args, bytes);
         } else {
@@ -178,7 +178,7 @@ pub fn find(core: &Core, args: &FindArgs) {
     }
 }
 
-pub fn hexdump(core: &Core, args: &HexdumpArgs) {
+pub fn hexdump(core: &ElfFile, args: &HexdumpArgs) {
     if let Some(load) = core.find_load_segment(args.addr) {
         hexdump_segment(core, args, load);
     } else {
@@ -189,14 +189,14 @@ pub fn hexdump(core: &Core, args: &HexdumpArgs) {
     }
 }
 
-pub fn hexdump_segment(core: &Core, args: &HexdumpArgs, load: &LoadSegment) {
+pub fn hexdump_segment(core: &ElfFile, args: &HexdumpArgs, load: &LoadSegment) {
     let delta = args.addr - load.vaddr;
     let offset = load.offset + delta; // all zeros
     core.reader
         .hex_dump(args.addr, offset as usize, args.count, args.offsets);
 }
 
-pub fn hexdump_any(core: &Core, offset: usize, count: usize) {
+pub fn hexdump_any(core: &ElfFile, offset: usize, count: usize) {
     core.reader.hex_dump(0, offset, count, HexdumpOffsets::Zero);
 }
 

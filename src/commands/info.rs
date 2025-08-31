@@ -5,10 +5,10 @@ use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, Se
 use crate::repl::{ExplainArgs, RegistersArgs};
 use crate::utils;
 use crate::utils::Styling;
-use crate::{elf::Core, repl::TableArgs};
+use crate::{elf::ElfFile, repl::TableArgs};
 use std::cmp::Ordering;
 
-pub fn info_header(core: &Core, args: &ExplainArgs) {
+pub fn info_header(core: &ElfFile, args: &ExplainArgs) {
     let mut b = SimpleTableBuilder::new();
 
     if core.reader.little_endian {
@@ -83,7 +83,7 @@ pub fn info_header(core: &Core, args: &ExplainArgs) {
     b.println(args.explain);
 }
 
-pub fn info_loads(core: &Core, args: &TableArgs) {
+pub fn info_loads(core: &ElfFile, args: &TableArgs) {
     pub fn find_file(
         files: &Option<Vec<MemoryMappedFile>>,
         vaddr: u64,
@@ -96,7 +96,7 @@ pub fn info_loads(core: &Core, args: &TableArgs) {
         }
     }
 
-    pub fn is_stack(core: &Core, segment: &LoadSegment) -> bool {
+    pub fn is_stack(core: &ElfFile, segment: &LoadSegment) -> bool {
         if let Some(status) = core.find_prstatus() {
             let bottom = status.get_frame_stack_bottom();
             segment.vaddr <= bottom && bottom < (segment.vaddr + segment.size)
@@ -142,7 +142,7 @@ pub fn info_loads(core: &Core, args: &TableArgs) {
     builder.println(args.titles, args.explain);
 }
 
-pub fn info_mapped(core: &Core, args: &TableArgs) {
+pub fn info_mapped(core: &ElfFile, args: &TableArgs) {
     if let Some(files) = core.find_memory_mapped_files() {
         let mut builder = TableBuilder::new();
         builder.add_col_l(
@@ -169,7 +169,7 @@ pub fn info_mapped(core: &Core, args: &TableArgs) {
     }
 }
 
-pub fn info_process(core: &Core, args: &ExplainArgs) {
+pub fn info_process(core: &ElfFile, args: &ExplainArgs) {
     if let Some(status) = core.find_prstatus() {
         let mut b = SimpleTableBuilder::new();
 
@@ -192,7 +192,7 @@ pub fn info_process(core: &Core, args: &ExplainArgs) {
     }
 }
 
-pub fn info_registers(core: &Core, args: &RegistersArgs) {
+pub fn info_registers(core: &ElfFile, args: &RegistersArgs) {
     // These come out in a really annoying order so we'll sort them.
     if let Some(status) = core.find_prstatus() {
         let mut tuples: Vec<(&'static str, u64)> = status
@@ -263,8 +263,8 @@ pub fn info_registers(core: &Core, args: &RegistersArgs) {
     }
 }
 
-pub fn info_sections(core: &Core, args: &TableArgs) {
-    let sections = Core::find_sections(&core.reader, &core.header);
+pub fn info_sections(core: &ElfFile, args: &TableArgs) {
+    let sections = ElfFile::find_sections(&core.reader, &core.header);
 
     let mut builder = TableBuilder::new();
     builder.add_col_r("index", "Index into sections.");
@@ -311,8 +311,8 @@ pub fn info_sections(core: &Core, args: &TableArgs) {
     builder.println(args.titles, args.explain);
 }
 
-pub fn info_segments(core: &Core, args: &TableArgs) {
-    let segments = Core::find_segments(&core.reader, &core.header);
+pub fn info_segments(core: &ElfFile, args: &TableArgs) {
+    let segments = ElfFile::find_segments(&core.reader, &core.header);
 
     let mut builder = TableBuilder::new();
     builder.add_col_l("type", "the segment type");
@@ -352,7 +352,7 @@ pub fn info_segments(core: &Core, args: &TableArgs) {
     }
 }
 
-pub fn info_signals(core: &Core, args: &TableArgs) {
+pub fn info_signals(core: &ElfFile, args: &TableArgs) {
     let maybe_status = core.find_prstatus();
     let maybe_signal = core.find_signal_info();
 
@@ -410,7 +410,7 @@ pub fn info_signals(core: &Core, args: &TableArgs) {
     }
 }
 
-fn index_to_str(core: &Core, index: SymbolIndex) -> String {
+fn index_to_str(core: &ElfFile, index: SymbolIndex) -> String {
     match index {
         SymbolIndex::Abs => "Value".to_string(),
         SymbolIndex::Common => "Common".to_string(),
@@ -422,7 +422,7 @@ fn index_to_str(core: &Core, index: SymbolIndex) -> String {
     }
 }
 
-pub fn info_symbols(core: &Core, args: &TableArgs) {
+pub fn info_symbols(core: &ElfFile, args: &TableArgs) {
     let mut builder = TableBuilder::new();
     builder.add_col_l("name", "the symbol name");
     builder.add_col_l("type", "the symbol type");

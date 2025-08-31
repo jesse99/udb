@@ -1,4 +1,4 @@
-//! Represents a core dump file.
+//! Data within a core file or exe.
 use super::{
     ElfHeader, LoadSegment, MemoryMappedFile, NoteContents, NoteType, PrStatus, ProgramHeader,
     Reader, SegmentType, Stream,
@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 
-pub struct Core {
+pub struct ElfFile {
     // TODO may want to rename this because I think it'll be useable for exes too
     pub header: ElfHeader,
     pub path: std::path::PathBuf,
@@ -23,7 +23,7 @@ pub struct Core {
     pub notes: HashMap<NoteType, NoteContents>,
 }
 
-impl Core {
+impl ElfFile {
     pub fn new(path: std::path::PathBuf) -> Result<Self, Box<dyn Error>> {
         // This is unfafe because it has undefined behavior if the underlying file is modified
         // while the memory map is in use.
@@ -31,10 +31,10 @@ impl Core {
         let bytes = unsafe { Mmap::map(&file) }?;
         let reader = Reader::new(bytes)?;
         let header = ElfHeader::new(&reader)?;
-        let loads = Core::load_loads(&reader, &header)?;
-        let notes = Core::load_notes(&reader, &header)?;
-        Core::load_others(&reader, &header)?;
-        Ok(Core {
+        let loads = ElfFile::load_loads(&reader, &header)?;
+        let notes = ElfFile::load_notes(&reader, &header)?;
+        ElfFile::load_others(&reader, &header)?;
+        Ok(ElfFile {
             path,
             reader,
             header,
@@ -220,7 +220,7 @@ impl Core {
 
     pub fn find_symbols(&self) -> Vec<SymbolTable> {
         let mut tables = Vec::new();
-        for section in Core::find_sections(&self.reader, &self.header) {
+        for section in ElfFile::find_sections(&self.reader, &self.header) {
             if section.stype == SectionType::SymbolTable {
                 let mut offset = section.offset;
                 let mut entries = Vec::new();
@@ -484,7 +484,7 @@ mod tests {
     #[test]
     fn debug_header() {
         let path = std::path::PathBuf::from("cores/shopping-debug/app-debug.core");
-        let core = Core::new(path).unwrap();
+        let core = ElfFile::new(path).unwrap();
         let s = format!("{} on {}", core.header.machine(), core.header.abi());
         insta::assert_snapshot!(s);
     }
@@ -492,7 +492,7 @@ mod tests {
     #[test]
     fn debug_signal() {
         let path = std::path::PathBuf::from("cores/shopping-debug/app-debug.core");
-        let core = Core::new(path).unwrap();
+        let core = ElfFile::new(path).unwrap();
         let s = match core.find_prstatus() {
             Some(status) => status.signal(),
             None => "no pr status",
@@ -503,7 +503,7 @@ mod tests {
     #[test]
     fn debug_memory_mapped_files() {
         let path = std::path::PathBuf::from("cores/shopping-debug/app-debug.core");
-        let core = Core::new(path).unwrap();
+        let core = ElfFile::new(path).unwrap();
         let s = match core.find_memory_mapped_files() {
             // start_addr and end_addr will change with each build
             // size will change if we tweak the code
