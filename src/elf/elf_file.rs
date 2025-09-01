@@ -1,7 +1,7 @@
 //! Data within a core file or exe.
 use super::{
-    ElfHeader, LoadSegment, MemoryMappedFile, NoteContents, NoteType, PrStatus, ProgramHeader,
-    Reader, SegmentType, Stream,
+    ElfHeader, LoadSegment, MemoryMappedFile, NoteType, PrStatus, ProgramHeader, Reader,
+    SegmentType, Stream,
 };
 use crate::debug::{SymbolTable, SymbolTableEntry};
 use crate::elf::{
@@ -17,16 +17,17 @@ pub struct ElfFile {
     pub header: ElfHeader,
     pub path: std::path::PathBuf,
     pub reader: Reader,
-    pub loads: Vec<LoadSegment>,      //
-    pub notes: Vec<Note>,             // TODO what about exe?
+    pub loads: Vec<LoadSegment>,
+    pub notes: Vec<Note>,
     pub sections: Vec<SectionHeader>, // not used for core files
 }
 
 impl ElfFile {
     pub fn new(path: std::path::PathBuf) -> Result<Self, Box<dyn Error>> {
-        // This is unfafe because it has undefined behavior if the underlying file is modified
-        // while the memory map is in use.
         let file = File::open(path.clone())?;
+
+        // This is unfafe because it has undefined behavior if the underlying file is
+        // modified while the memory map is in use.
         let bytes = unsafe { Mmap::map(&file) }?;
         let reader = Reader::new(bytes)?;
         let header = ElfHeader::new(&reader)?;

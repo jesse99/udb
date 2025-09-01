@@ -12,8 +12,7 @@
 //!
 //! Program headers identify segments. Segments are used by the OS to load an exe into
 //! memory. A program header has type, vaddr, offset, etc. Common types are:
-//! * Load - for a core file these are usually memory mapped files for the exe and DLLs.
-//!          for an exe these are text (CPU instructions) and data (eg statics)
+//! * Load - for a core file these are usually memory mapped files for the exe and DLLs, for an exe these are text (CPU instructions) and data (eg statics)
 //! * Note - variety of metadata, e.g. process and signal info.
 //! * TLS - thread local storage info.
 //!
@@ -21,6 +20,7 @@
 //! appear in core files. Section headers have name, type, vaddr, offset, size, etc.
 //! There are a lot of types including for the symbol table, string table, etc.
 pub mod elf_file;
+pub mod elf_files;
 pub mod header;
 pub mod io;
 pub mod notes;
@@ -28,6 +28,7 @@ pub mod sections;
 pub mod segments;
 
 pub use elf_file::*;
+pub use elf_files::*;
 pub use header::*;
 pub use io::*;
 pub use notes::*;

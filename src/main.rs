@@ -3,27 +3,72 @@ mod debug;
 mod elf;
 mod repl;
 mod utils;
+use crate::elf::ElfFiles;
 use clap::Parser;
 use clap_repl::ClapEditor;
 use clap_repl::reedline::{
     DefaultPrompt, FileBackedHistory, Highlighter, Prompt, PromptEditMode, PromptHistorySearch,
     StyledText,
 };
-use elf::ElfFile;
 use nu_ansi_term::{Color, Style};
 use repl::InfoAction;
 use repl::Repl;
 use std::borrow::Cow;
+use std::error::Error;
 use std::path::PathBuf;
 use std::process;
-
-use crate::utils::warn;
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
-    /// path to core file
-    core: PathBuf,
+    /// paths to a core and/or exe file
+    paths: Vec<PathBuf>,
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    utils::generate_style_file();
+
+    let cli = Cli::parse();
+    if cli.paths.is_empty() || cli.paths.len() > 2 {
+        return Err("expected a path to a core and/or exe file".into());
+    }
+    let files = ElfFiles::new(cli.paths)?;
+
+    // left prompt                    before what the user types
+    // highlighter                    this is for what the user types
+    // with_visual_selection_style    this is for the selection
+    let prompt = MyPrompt::new(); // TODO should be able to configure stuff like colors and history size
+    let rl = ClapEditor::<Repl>::builder()
+        .with_prompt(Box::new(prompt))
+        .with_editor_hook(|reed| {
+            reed.with_highlighter(Box::new(MyHighlighter::new()))
+                .with_history(Box::new(
+                    FileBackedHistory::with_file(10000, "/tmp/udb-history".into()).unwrap(),
+                ))
+        })
+        .build();
+
+    use repl::MainCommand::*;
+    rl.repl(|repl: Repl| match repl.command {
+        Bt => commands::backtrace(&files),
+        Find(args) => commands::find(&files, &args),
+        Info(info) => match info.action {
+            InfoAction::Header(args) => commands::info_header(&files, &args),
+            InfoAction::Loads(args) => commands::info_loads(&files, &args),
+            InfoAction::Mapped(args) => commands::info_mapped(&files, &args),
+            InfoAction::Notes(args) => commands::info_notes(&files, &args),
+            InfoAction::Process(args) => commands::info_process(&files, &args),
+            InfoAction::Registers(args) => commands::info_registers(&files, &args),
+            InfoAction::Sections(args) => commands::info_sections(&files, &args),
+            InfoAction::Segments(args) => commands::info_segments(&files, &args),
+            InfoAction::Signals(args) => commands::info_signals(&files, &args),
+            InfoAction::Symbols(args) => commands::info_symbols(&files, &args),
+            _ => todo!(),
+        },
+        Hexdump(args) => commands::hexdump(&files, &args),
+        Quit => process::exit(0),
+    });
+    Ok(())
 }
 
 /// A simple, example highlighter that shows how to highlight keywords
@@ -101,56 +146,4 @@ impl MyPrompt {
             default: DefaultPrompt::default(),
         }
     }
-}
-
-fn load_core(path: PathBuf) -> ElfFile {
-    match ElfFile::new(path.clone()) {
-        Ok(core) => core,
-        Err(e) => {
-            warn(&format!("Couldn't load {}: {e}", path.display()));
-            std::process::exit(1);
-        }
-    }
-}
-
-fn main() {
-    utils::generate_style_file();
-
-    let cli = Cli::parse();
-    let path = cli.core;
-    let core = load_core(path);
-
-    // left prompt                    before what the user types
-    // highlighter                    this is for what the user types
-    // with_visual_selection_style    this is for the selection
-    let prompt = MyPrompt::new(); // TODO should be able to configure stuff like colors and history size
-    let rl = ClapEditor::<Repl>::builder()
-        .with_prompt(Box::new(prompt))
-        .with_editor_hook(|reed| {
-            reed.with_highlighter(Box::new(MyHighlighter::new()))
-                .with_history(Box::new(
-                    FileBackedHistory::with_file(10000, "/tmp/udb-history".into()).unwrap(),
-                ))
-        })
-        .build();
-
-    use repl::MainCommand::*;
-    rl.repl(|repl: Repl| match repl.command {
-        Bt => commands::backtrace(&core),
-        Find(args) => commands::find(&core, &args),
-        Info(info) => match info.action {
-            InfoAction::Header(args) => commands::info_header(&core, &args),
-            InfoAction::Loads(args) => commands::info_loads(&core, &args),
-            InfoAction::Mapped(args) => commands::info_mapped(&core, &args),
-            InfoAction::Notes(args) => commands::info_notes(&core, &args),
-            InfoAction::Process(args) => commands::info_process(&core, &args),
-            InfoAction::Registers(args) => commands::info_registers(&core, &args),
-            InfoAction::Sections(args) => commands::info_sections(&core, &args),
-            InfoAction::Segments(args) => commands::info_segments(&core, &args),
-            InfoAction::Signals(args) => commands::info_signals(&core, &args),
-            InfoAction::Symbols(args) => commands::info_symbols(&core, &args),
-        },
-        Hexdump(args) => commands::hexdump(&core, &args),
-        Quit => process::exit(0),
-    });
 }

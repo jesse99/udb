@@ -11,6 +11,9 @@ pub struct ElfHeader {
     /// Linux, NetBSD, etc
     pub osabi: u8,
 
+    /// Core files are 4.
+    pub etype: u16,
+
     /// More ABI info (ignored on Linux for static exececutables).
     pub abiversion: u8, // TODO remove this?
 
@@ -47,7 +50,7 @@ impl ElfHeader {
         const EI_NIDENT: usize = 16;
 
         let mut s = Stream::new(reader, EI_NIDENT);
-        let _e_type = s.read_half()?;
+        let etype = s.read_half()?;
         let machine = s.read_half()?;
         let e_version = s.read_word()?;
         let _e_entry = s.read_addr()?;
@@ -75,6 +78,7 @@ impl ElfHeader {
 
         Ok(ElfHeader {
             osabi: reader.read_byte(0x07)?,
+            etype,
             abiversion: reader.read_byte(0x08)?,
             machine,
             ph_offset,
@@ -184,6 +188,21 @@ impl ElfHeader {
             0x11 => "Nuxi CloudABI",
             0x12 => "Stratus Technologies OpenVOS",
             _ => "unknown ABI",
+        }
+    }
+
+    pub fn stype(&self) -> &'static str {
+        match self.etype {
+            0 => "none",
+            1 => "relocatable file",
+            2 => "executable file",
+            3 => "shared object file",
+            4 => "core file",
+            0xfe00 => "OS specific",
+            0xfeff => "OS specific",
+            0xff00 => "CPU specific",
+            0xffff => "CPU specific",
+            _ => "unknown",
         }
     }
 }

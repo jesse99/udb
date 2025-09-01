@@ -5,85 +5,104 @@ use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader};
 use crate::repl::{ExplainArgs, RegistersArgs};
 use crate::utils;
 use crate::utils::Styling;
-use crate::{elf::ElfFile, repl::TableArgs};
+use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
 use std::cmp::Ordering;
 
-pub fn info_header(core: &ElfFile, args: &ExplainArgs) {
+fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
+    if exe {
+        match &files.exe {
+            Some(file) => file,
+            None => {
+                utils::warn("--exe was used but there is no exe: using core instead");
+                files.core.as_ref().unwrap()
+            }
+        }
+    } else {
+        match &files.core {
+            Some(file) => file,
+            None => files.exe.as_ref().unwrap(),
+        }
+    }
+}
+
+pub fn info_header(files: &ElfFiles, args: &ExplainArgs) {
     let mut b = SimpleTableBuilder::new();
 
-    if core.reader.little_endian {
+    let file = get_file(files, args.exe);
+    add_simple!(b, "type", file.header.stype(), "type of ELF file");
+    if file.reader.little_endian {
         add_simple!(
             b,
             "little endian",
-            core.reader.little_endian,
+            file.reader.little_endian,
             "words are being laid out in memory with the most significant byte last"
         );
     } else {
         add_simple!(
             b,
             "little endian",
-            core.reader.little_endian,
+            file.reader.little_endian,
             "words are being laid out out in memory with the most significant byte first"
         );
     }
-    if core.reader.sixty_four_bit {
+    if file.reader.sixty_four_bit {
         add_simple!(
             b,
             "64-bit",
-            core.reader.sixty_four_bit,
+            file.reader.sixty_four_bit,
             "pointers are eight bytes"
         );
     } else {
         add_simple!(
             b,
             "64-bit",
-            core.reader.sixty_four_bit,
+            file.reader.sixty_four_bit,
             "pointers are four bytes"
         );
     }
     add_simple!(
         b,
         "osabi",
-        core.header.abi(),
+        file.header.abi(),
         "the OS the binary was compiled for"
     );
-    add_simple!(b, "abiversion", core.header.abiversion, "zero for Linux");
-    add_simple!(b, "machine", core.header.machine(), "CPU architecture");
-    add_simple!(b, "flags", core.header.flags, "Linux has no defined flags");
+    add_simple!(b, "abiversion", file.header.abiversion, "zero for Linux");
+    add_simple!(b, "machine", file.header.machine(), "CPU architecture");
+    add_simple!(b, "flags", file.header.flags, "Linux has no defined flags");
     add_simple!(
         b,
         "ph_offset",
-        core.header.ph_offset,
+        file.header.ph_offset,
         "offset in the ELF file to the Program Header table"
     );
     add_simple!(
         b,
         "num_ph_entries",
-        core.header.num_ph_entries,
+        file.header.num_ph_entries,
         "number of entries in the Program Header table"
     );
     add_simple!(
         b,
         "section_offset",
-        core.header.section_offset,
+        file.header.section_offset,
         "offset in the ELF file to the section header table"
     );
     add_simple!(
         b,
         "num_section_entries",
-        core.header.num_section_entries,
+        file.header.num_section_entries,
         "number of entries in the section header table"
     );
     add_simple!(
         b,
         "string_table_index",
-        core.header.string_table_index,
+        file.header.string_table_index,
         "section index containing the string table"
     );
     b.println(args.explain);
 }
 
-pub fn info_loads(core: &ElfFile, args: &TableArgs) {
+pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
     pub fn find_file(
         files: &Option<Vec<MemoryMappedFile>>,
         vaddr: u64,
@@ -96,8 +115,8 @@ pub fn info_loads(core: &ElfFile, args: &TableArgs) {
         }
     }
 
-    pub fn is_stack(core: &ElfFile, segment: &LoadSegment) -> bool {
-        if let Some(status) = core.find_prstatus() {
+    pub fn is_stack(file: &ElfFile, segment: &LoadSegment) -> bool {
+        if let Some(status) = file.find_prstatus() {
             let bottom = status.get_frame_stack_bottom();
             segment.vaddr <= bottom && bottom < (segment.vaddr + segment.size)
         } else {
@@ -118,12 +137,13 @@ pub fn info_loads(core: &ElfFile, args: &TableArgs) {
         "path to memory mapped file or how the segment is used",
     );
 
-    let files = core.find_memory_mapped_files();
-    for segment in core.loads.iter() {
+    let file = get_file(files, args.exe);
+    let files = file.find_memory_mapped_files();
+    for segment in file.loads.iter() {
         let mut note = String::new();
         if let Some(file) = find_file(&files, segment.vaddr) {
             note.push_str(&format!("{} ", file.file_name));
-        } else if is_stack(core, segment) {
+        } else if is_stack(file, segment) {
             note.push_str("[stack] ");
         } else if !segment.executable() && segment.writeable() && segment.readable() {
             note.push_str("[data] ");
@@ -142,8 +162,9 @@ pub fn info_loads(core: &ElfFile, args: &TableArgs) {
     builder.println(args.titles, args.explain);
 }
 
-pub fn info_mapped(core: &ElfFile, args: &TableArgs) {
-    if let Some(files) = core.find_memory_mapped_files() {
+pub fn info_mapped(files: &ElfFiles, args: &TableArgs) {
+    let file = get_file(files, args.exe);
+    if let Some(files) = file.find_memory_mapped_files() {
         let mut builder = TableBuilder::new();
         builder.add_col_l(
             "start",
@@ -169,13 +190,14 @@ pub fn info_mapped(core: &ElfFile, args: &TableArgs) {
     }
 }
 
-pub fn info_notes(file: &ElfFile, args: &TableArgs) {
+pub fn info_notes(files: &ElfFiles, args: &TableArgs) {
     let mut builder = TableBuilder::new();
     builder.add_col_l("name", "note namespace");
     builder.add_col_l("type", "the type of the note");
     builder.add_col_r("offset", "offset into the ELF file (hex)");
     builder.add_col_r("size", "size of the note");
 
+    let file = get_file(files, args.exe);
     for note in file.notes.iter() {
         add_field!(builder, "name", note.name);
         add_field!(builder, "type", "{:?}", note.ntype);
@@ -186,21 +208,22 @@ pub fn info_notes(file: &ElfFile, args: &TableArgs) {
     builder.println(args.titles, args.explain);
 }
 
-pub fn info_process(core: &ElfFile, args: &ExplainArgs) {
-    if let Some(status) = core.find_prstatus() {
+pub fn info_process(files: &ElfFiles, args: &ExplainArgs) {
+    let file = get_file(files, args.exe);
+    if let Some(status) = file.find_prstatus() {
         let mut b = SimpleTableBuilder::new();
 
         add_simple!(
             b,
             "pid",
             status.pid,
-            "the process id for the exe that produced the core"
+            "the process id for the exe that produced the file"
         );
         add_simple!(
             b,
-            "core",
-            core.path.display(),
-            "path to the core file that was loaded"
+            "file",
+            file.path.display(),
+            "path to the ELF file that was loaded"
         );
 
         b.println(args.explain);
@@ -209,9 +232,10 @@ pub fn info_process(core: &ElfFile, args: &ExplainArgs) {
     }
 }
 
-pub fn info_registers(core: &ElfFile, args: &RegistersArgs) {
+pub fn info_registers(files: &ElfFiles, args: &RegistersArgs) {
     // These come out in a really annoying order so we'll sort them.
-    if let Some(status) = core.find_prstatus() {
+    let file = get_file(files, args.exe);
+    if let Some(status) = file.find_prstatus() {
         let mut tuples: Vec<(&'static str, u64)> = status
             .registers
             .iter()
@@ -280,8 +304,9 @@ pub fn info_registers(core: &ElfFile, args: &RegistersArgs) {
     }
 }
 
-pub fn info_sections(core: &ElfFile, args: &TableArgs) {
-    let sections = core.find_sections();
+pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
+    let file = get_file(files, args.exe);
+    let sections = file.find_sections();
 
     let mut builder = TableBuilder::new();
     builder.add_col_r("index", "index into sections.");
@@ -306,7 +331,7 @@ pub fn info_sections(core: &ElfFile, args: &TableArgs) {
     // by index...
     for (i, section) in sections.iter().enumerate() {
         add_field!(builder, "index", i); // sections are often referenced by index so this is handy
-        match core.find_default_string(section.name as usize) {
+        match file.find_default_string(section.name as usize) {
             Some(n) => {
                 add_field!(builder, "name", n);
             }
@@ -328,8 +353,9 @@ pub fn info_sections(core: &ElfFile, args: &TableArgs) {
     builder.println(args.titles, args.explain);
 }
 
-pub fn info_segments(core: &ElfFile, args: &TableArgs) {
-    let segments = ElfFile::find_segments(&core.reader, &core.header);
+pub fn info_segments(files: &ElfFiles, args: &TableArgs) {
+    let file = get_file(files, args.exe);
+    let segments = ElfFile::find_segments(&file.reader, &file.header);
 
     let mut builder = TableBuilder::new();
     builder.add_col_l("type", "the segment type");
@@ -364,9 +390,10 @@ pub fn info_segments(core: &ElfFile, args: &TableArgs) {
     }
 }
 
-pub fn info_signals(core: &ElfFile, args: &TableArgs) {
-    let maybe_status = core.find_prstatus();
-    let maybe_signal = core.find_signal_info();
+pub fn info_signals(files: &ElfFiles, args: &TableArgs) {
+    let file = get_file(files, args.exe);
+    let maybe_status = file.find_prstatus();
+    let maybe_signal = file.find_signal_info();
 
     if let Some(status) = &maybe_status {
         println!("{}", status.signal()); // this one does a nice job formatting signal and code
@@ -422,11 +449,11 @@ pub fn info_signals(core: &ElfFile, args: &TableArgs) {
     }
 }
 
-fn index_to_str(core: &ElfFile, index: SymbolIndex) -> String {
+fn index_to_str(file: &ElfFile, index: SymbolIndex) -> String {
     match index {
         SymbolIndex::Abs => "Value".to_string(),
         SymbolIndex::Common => "Common".to_string(),
-        SymbolIndex::Index(i) => core
+        SymbolIndex::Index(i) => file
             .find_section_name(i as u32)
             .unwrap_or("bad section index".to_string()),
         SymbolIndex::Undef => "".to_string(),
@@ -434,7 +461,7 @@ fn index_to_str(core: &ElfFile, index: SymbolIndex) -> String {
     }
 }
 
-pub fn info_symbols(core: &ElfFile, args: &TableArgs) {
+pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
     let mut builder = TableBuilder::new();
     builder.add_col_l("name", "the symbol name");
     builder.add_col_l("type", "the symbol type");
@@ -455,12 +482,13 @@ pub fn info_symbols(core: &ElfFile, args: &TableArgs) {
     // TODO maybe also filtering options, eg max-results and filter by col value
     //      two options for filter by col? or something like --filter="type=Func"?
     //      maybe also a colplement option
-    let tables = core.find_symbols();
+    let file = get_file(files, args.exe);
+    let tables = file.find_symbols();
     for table in tables.iter() {
         for e in table.entries.iter() {
             // TODO function names can be really long (especially with name mangling)
             // readelf puts a pretty small cap on these, maybe we should default to the same
-            let name = core
+            let name = file
                 .find_string(table.section.link, e.name as usize)
                 .unwrap_or("unknown".to_string());
             add_field!(builder, "name", name);
@@ -469,7 +497,7 @@ pub fn info_symbols(core: &ElfFile, args: &TableArgs) {
             add_field!(builder, "type", "{:?}", e.stype);
             add_field!(builder, "binding", "{:?}", e.binding);
             add_field!(builder, "visibility", "{:?}", e.visibility);
-            add_field!(builder, "related", index_to_str(core, e.index));
+            add_field!(builder, "related", index_to_str(file, e.index));
         }
     }
 

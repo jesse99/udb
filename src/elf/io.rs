@@ -1,4 +1,4 @@
-use crate::repl::HexdumpOffsets;
+use crate::repl::HexdumpLabels;
 use crate::utils;
 use crate::utils::Styling;
 use crate::utils::print_styled;
@@ -104,15 +104,15 @@ impl Reader {
         }
     }
 
-    pub fn hex_dump(&self, addr: u64, offset: usize, size: usize, offsets: HexdumpOffsets) {
+    pub fn hex_dump(&self, addr: u64, offset: usize, size: usize, labels: HexdumpLabels) {
         let mut i = offset;
         loop {
-            match offsets {
-                HexdumpOffsets::None => (),
-                HexdumpOffsets::Addr => {
+            match labels {
+                HexdumpLabels::None => (),
+                HexdumpLabels::Addr => {
                     print_styled!("{:012x}: ", hex_offset, addr + (i - offset) as u64);
                 }
-                HexdumpOffsets::Zero => {
+                HexdumpLabels::Zero => {
                     print_styled!("{:04x}: ", hex_offset, i - offset);
                 }
             }

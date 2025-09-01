@@ -70,6 +70,10 @@ pub enum InfoAction {
 
 #[derive(Args)]
 pub struct ExplainArgs {
+    /// Show core info unless there is no core or this is set
+    #[arg(long)]
+    pub exe: bool,
+
     /// Explain columns, fields, etc.
     #[arg(short, long)]
     pub explain: bool,
@@ -103,6 +107,10 @@ pub struct FindArgs {
 
 #[derive(Args)]
 pub struct TableArgs {
+    /// Show core info unless there is no core or this is set
+    #[arg(long)]
+    pub exe: bool,
+
     /// Explain columns, fields, etc.
     #[arg(short, long)]
     pub explain: bool,
@@ -118,6 +126,10 @@ pub struct RegistersArgs {
     #[arg(short, long)]
     pub all: bool,
 
+    /// Show core info unless there is no core or this is set
+    #[arg(long)]
+    pub exe: bool,
+
     /// Explain columns, fields, etc.
     #[arg(short, long)]
     pub explain: bool,
@@ -129,39 +141,47 @@ pub struct RegistersArgs {
 
 #[derive(Args)]
 pub struct HexdumpArgs {
-    /// Address at which to start dumping
-    #[arg(value_parser = parse_u64_expr)]
-    pub addr: u64,
+    /// Dump the exe instead of the core file
+    #[arg(long)]
+    pub exe: bool,
 
     /// Number of bytes to dump
     #[arg(short, long)]
     #[arg(default_value_t = 16)]
     pub count: usize,
 
-    /// How to display offsets for the start of each row
+    /// How to display the start of each row
     #[arg(short, long, name = "TYPE")]
-    #[arg(default_value_t = HexdumpOffsets::None)]
-    pub offsets: HexdumpOffsets,
+    #[arg(default_value_t = HexdumpLabels::None)]
+    pub labels: HexdumpLabels,
+
+    /// Treat the value as an offset into the ELF file
+    #[arg(long)]
+    pub offset: bool,
+
+    /// Defaults to an address
+    #[arg(value_parser = parse_u64_expr)]
+    pub value: u64,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
-pub enum HexdumpOffsets {
-    /// Don't show offsets
+pub enum HexdumpLabels {
+    /// Show nothing at the start of lines
     None,
 
-    /// Show offsets starting at addr
+    /// Show the address for the first byte on each line
     Addr,
 
-    /// Show offsets starting at zero
+    /// Show the offset from zero for the first byte on each line
     Zero,
 }
 
-impl fmt::Display for HexdumpOffsets {
+impl fmt::Display for HexdumpLabels {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            HexdumpOffsets::None => fmt.write_str("none")?,
-            HexdumpOffsets::Addr => fmt.write_str("addr")?,
-            HexdumpOffsets::Zero => fmt.write_str("zero")?,
+            HexdumpLabels::None => fmt.write_str("none")?,
+            HexdumpLabels::Addr => fmt.write_str("addr")?,
+            HexdumpLabels::Zero => fmt.write_str("zero")?,
         }
         Ok(())
     }

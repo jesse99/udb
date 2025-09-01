@@ -1,5 +1,5 @@
-//! The various notes in an ELF file. These provide information about the process and
-//! not all may be present.
+//! The various notes in an ELF file. For cores these provide information about the process.
+//! For exe's they provide information about how it was built. Not all may be present.
 use super::Stream;
 use crate::utils;
 use std::error::Error;
