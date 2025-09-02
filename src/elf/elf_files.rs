@@ -1,4 +1,4 @@
-use crate::elf::{ElfFile, LoadSegment, PrStatus};
+use crate::elf::{ElfFile, LoadSegment, PrStatus, Relocation};
 use std::error::Error;
 
 pub struct ElfFiles {
@@ -49,5 +49,16 @@ impl ElfFiles {
             Some(c) => c.find_vaddr(offset),
             None => None,
         }
+    }
+
+    pub fn find_relocations(&self) -> Vec<Relocation> {
+        let mut result = Vec::new();
+        if let Some(file) = &self.core {
+            file.find_relocations(&mut result);
+        }
+        if let Some(file) = &self.exe {
+            file.find_relocations(&mut result);
+        }
+        result
     }
 }

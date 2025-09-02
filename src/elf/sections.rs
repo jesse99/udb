@@ -18,7 +18,7 @@ const MASKOS_FLAG: u64 = 0x0ff00000; // OS-specific.
 const MASKPROC_FLAG: u64 = 0xf0000000; // Processor-specific
 
 /// Describes a section.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SectionHeader {
     // Elf32_Shdr or Elf64_Shdr, see hthttps://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
     /// Index into the string table. Zero means no name.
@@ -238,6 +238,122 @@ impl SectionHeader {
                 align,
                 entry_size,
             })
+        }
+    }
+}
+
+// see https://intezer.com/blog/executable-and-linkable-format-101-part-3-relocations/
+#[derive(Debug)]
+pub struct Relocation {
+    pub offset: u64,
+    pub dynamic: bool,
+    pub symbol_index: u32,
+    pub rtype: RelocationX86_64,
+    pub addend: Option<i64>,
+}
+
+#[derive(Debug)]
+pub enum RelocationX86_64 {
+    // name        val  field   calculation
+    None,       // 0	None	None
+    SixtyFour,  // 1	qword	S + A
+    Pc32,       // 2	dword	S + A – P
+    Got32,      // 3	dword	G + A
+    Plt32,      // 4	dword	L + A – P
+    Copy,       // 5	None	Value is copied directly from shared object
+    GlobDat,    // 6	qword	S
+    JumpSlot,   // 7	qword	S
+    Relative,   // 8	qword	B + A
+    GotPcRel,   // 9	dword	G + GOT + A – P
+    ThirtyTwo,  // 10	dword	S + A
+    ThirtyTwoS, // 11	dword	S + A
+    Sixteen,    // 12	word	S + A
+    Pc16,       // 13	word	S + A – P
+    Eight,      // 14	word8	S + A
+    Pc8,        // 15	word8	S + A – P
+    Pc64,       // 24	qword	S + A – P
+    GoTOoff64,  // 25	qword	S + A – GOT
+    GotPc32,    // 26	dword	GOT + A – P
+    Size32,     // 32	dword	Z + A
+    Size64,     // 33	qword	Z + A
+}
+
+impl Relocation {
+    pub fn with_no_addend(
+        reader: &Reader,
+        offset: usize,
+        dynamic: bool,
+    ) -> Result<Self, Box<dyn Error>> {
+        Relocation::new(reader, offset, false, dynamic)
+    }
+
+    pub fn with_addend(
+        reader: &Reader,
+        offset: usize,
+        dynamic: bool,
+    ) -> Result<Self, Box<dyn Error>> {
+        Relocation::new(reader, offset, true, dynamic)
+    }
+
+    fn new(
+        reader: &Reader,
+        offset: usize,
+        has_addend: bool,
+        dynamic: bool,
+    ) -> Result<Self, Box<dyn Error>> {
+        let mut s = Stream::new(reader, offset);
+        let offset = s.read_addr()?;
+        let info = s.read_xword()?;
+        let addend = if has_addend {
+            Some(s.read_sxword()?)
+        } else {
+            None
+        };
+        if reader.sixty_four_bit {
+            Ok(Relocation {
+                offset,
+                symbol_index: (info >> 32) as u32,
+                rtype: RelocationX86_64::from_u64(info & 0xffffffff)?,
+                addend,
+                dynamic,
+            })
+        } else {
+            Ok(Relocation {
+                offset,
+                symbol_index: (info >> 8) as u32,
+                rtype: RelocationX86_64::from_u64(info & 0xff)?,
+                addend,
+                dynamic,
+            })
+        }
+    }
+}
+
+impl RelocationX86_64 {
+    fn from_u64(rtype: u64) -> Result<Self, Box<dyn Error>> {
+        match rtype {
+            0 => Ok(RelocationX86_64::None),
+            1 => Ok(RelocationX86_64::SixtyFour),
+            2 => Ok(RelocationX86_64::Pc32),
+            3 => Ok(RelocationX86_64::Got32),
+            4 => Ok(RelocationX86_64::Plt32),
+            5 => Ok(RelocationX86_64::Copy),
+            6 => Ok(RelocationX86_64::GlobDat),
+            7 => Ok(RelocationX86_64::JumpSlot),
+            8 => Ok(RelocationX86_64::Relative),
+            9 => Ok(RelocationX86_64::GotPcRel),
+            10 => Ok(RelocationX86_64::ThirtyTwo),
+            11 => Ok(RelocationX86_64::ThirtyTwoS),
+            12 => Ok(RelocationX86_64::Sixteen),
+            13 => Ok(RelocationX86_64::Pc16),
+            14 => Ok(RelocationX86_64::Eight),
+            15 => Ok(RelocationX86_64::Pc8),
+            24 => Ok(RelocationX86_64::Pc64),
+            25 => Ok(RelocationX86_64::GoTOoff64),
+            26 => Ok(RelocationX86_64::GotPc32),
+            32 => Ok(RelocationX86_64::Size32),
+            33 => Ok(RelocationX86_64::Size64),
+            _ => Err(format!("bad x86 64 relocation type: {rtype}").into()),
         }
     }
 }

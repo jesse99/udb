@@ -5,8 +5,8 @@ use super::{
 };
 use crate::debug::{SymbolTable, SymbolTableEntry};
 use crate::elf::{
-    ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, PosixSignal, SectionHeader,
-    SectionType, SigInfo, SignalDetails,
+    ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, PosixSignal, Relocation,
+    SectionHeader, SectionType, SigInfo, SignalDetails,
 };
 use crate::utils::{self, warn};
 use memmap2::Mmap;
@@ -78,33 +78,33 @@ impl ElfFile {
         }
     }
 
+    pub fn find_strings(&self, section: &SectionHeader, max: usize) -> Vec<String> {
+        let mut result = Vec::new();
+        if section.stype == SectionType::StringTable {
+            let mut stream = Stream::new(&self.reader, section.offset as usize);
+            while (stream.offset as u64) < section.offset + section.size {
+                if let Ok(s) = stream.read_string() {
+                    result.push(s);
+                    if result.len() == max {
+                        break;
+                    }
+                }
+            }
+        }
+        result
+    }
+
     pub fn find_section_name(&self, section_index: u32) -> Option<String> {
         let h = self.find_section(section_index)?;
         self.find_default_string(h.name as usize)
     }
 
-    pub fn find_symbols(&self) -> Vec<SymbolTable> {
-        let mut tables = Vec::new();
-        for section in self.sections.iter() {
-            if section.stype == SectionType::SymbolTable {
-                let mut offset = section.offset;
-                let mut entries = Vec::new();
-                while offset < section.offset + section.size {
-                    match SymbolTableEntry::new(&self.reader, offset as usize) {
-                        Ok(s) => entries.push(s),
-                        Err(err) => {
-                            warn(&format!("failed to read symbols at offset {offset}: {err}"))
-                        }
-                    }
-                    offset += section.entry_size;
-                }
-                tables.push(SymbolTable {
-                    section: section.clone(),
-                    entries,
-                });
-            }
-        }
-        tables
+    pub fn find_symbols(&self) -> Option<SymbolTable> {
+        self.do_find_symbols(SectionType::SymbolTable)
+    }
+
+    pub fn find_dynamic_symbols(&self) -> Option<SymbolTable> {
+        self.do_find_symbols(SectionType::DynamicSymbolTable)
     }
 
     pub fn find_segments(reader: &Reader, header: &ElfHeader) -> Vec<ProgramHeader> {
@@ -123,7 +123,7 @@ impl ElfFile {
         segments
     }
 
-    pub fn find_sections(&self) -> &Vec<SectionHeader> {
+    pub fn get_sections(&self) -> &Vec<SectionHeader> {
         &self.sections
     }
 
@@ -337,6 +337,74 @@ impl ElfFile {
             None
         }
     }
+
+    pub fn find_relocations(&self, result: &mut Vec<Relocation>) {
+        fn load_with(reader: &Reader, offset: u64, dynamic: bool) -> Option<Relocation> {
+            match Relocation::with_addend(reader, offset as usize, dynamic) {
+                Ok(r) => Some(r),
+                Err(err) => {
+                    utils::warn(&format!("couldn't read relocation at {offset}: {err}"));
+                    None
+                }
+            }
+        }
+
+        fn load_without(reader: &Reader, offset: u64, dynamic: bool) -> Option<Relocation> {
+            match Relocation::with_no_addend(reader, offset as usize, dynamic) {
+                Ok(r) => Some(r),
+                Err(err) => {
+                    utils::warn(&format!("couldn't read relocation at {offset}: {err}"));
+                    None
+                }
+            }
+        }
+
+        fn load_relocations_with(
+            reader: &Reader,
+            section: &SectionHeader,
+            result: &mut Vec<Relocation>,
+        ) {
+            let mut offset = section.offset;
+            while offset + section.entry_size <= section.offset + section.size {
+                let dynamic = section.info == 0; // TODO better to look at section name?
+                if let Some(r) = load_with(reader, offset, dynamic) {
+                    result.push(r)
+                }
+                offset += section.entry_size;
+            }
+        }
+
+        fn load_relocations_without(
+            reader: &Reader,
+            section: &SectionHeader,
+            result: &mut Vec<Relocation>,
+        ) {
+            let mut offset = section.offset;
+            while offset + section.entry_size <= section.offset + section.size {
+                let dynamic = section.info == 0; // TODO better to look at section name?
+                if let Some(r) = load_without(reader, offset, dynamic) {
+                    result.push(r)
+                }
+                offset += section.entry_size;
+            }
+        }
+
+        if !self.header.is_x66_64() {
+            utils::warn("relocations are only supported for x86 64-bit");
+            return;
+        }
+        for section in self.sections.iter() {
+            match section.stype {
+                SectionType::RelocationsWith => {
+                    load_relocations_with(&self.reader, section, result)
+                }
+                SectionType::RelocationsWithout => {
+                    load_relocations_without(&self.reader, section, result)
+                }
+                _ => (),
+            }
+        }
+    }
 }
 
 impl ElfFile {
@@ -347,6 +415,32 @@ impl ElfFile {
             utils::warn(&format!("bad section index: {section_index}"));
         }
         section
+    }
+
+    fn do_find_symbols(&self, stype: SectionType) -> Option<SymbolTable> {
+        for section in self.sections.iter() {
+            if section.stype == stype {
+                // TODO warn if there is more than one of these
+                let mut offset = section.offset;
+                let mut entries = Vec::new();
+                while offset < section.offset + section.size {
+                    match SymbolTableEntry::new(&self.reader, offset as usize) {
+                        Ok(s) => entries.push(s),
+                        Err(err) => {
+                            warn(&format!("failed to read symbols at offset {offset}: {err}"))
+                        }
+                    }
+                    offset += section.entry_size;
+                }
+                let table = SymbolTable {
+                    section: section.clone(),
+                    dynamic: stype == SectionType::DynamicSymbolTable,
+                    entries,
+                };
+                return Some(table);
+            }
+        }
+        None
     }
 
     fn load_loads(reader: &Reader, header: &ElfHeader) -> Vec<LoadSegment> {

@@ -8,6 +8,9 @@ use std::error::Error;
 #[derive(Debug, Default)]
 pub struct ElfHeader {
     // Elf64_Ehdr, see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html
+    /// 1 for 32-bit, 2 for 64-bit
+    pub class: u8,
+
     /// Linux, NetBSD, etc
     pub osabi: u8,
 
@@ -79,6 +82,7 @@ impl ElfHeader {
         Ok(ElfHeader {
             osabi: reader.read_byte(0x07)?,
             etype,
+            class: reader.read_byte(0x04)?,
             abiversion: reader.read_byte(0x08)?,
             machine,
             ph_offset,
@@ -90,6 +94,11 @@ impl ElfHeader {
             num_section_entries,
             string_table_index,
         })
+    }
+
+    pub fn is_x66_64(&self) -> bool {
+        // AMD x86-64 or x86 && 64-bit
+        self.machine == 0x3E || (self.machine == 0x03 && self.class == 2)
     }
 
     pub fn machine(&self) -> &'static str {

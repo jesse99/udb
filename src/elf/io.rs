@@ -85,6 +85,15 @@ impl Reader {
         }
     }
 
+    pub fn read_sxword(&self, offset: usize) -> Result<i64, Box<dyn Error>> {
+        let slice = &self.bytes[offset..offset + 8];
+        if self.little_endian {
+            Ok(i64::from_le_bytes(slice.try_into()?))
+        } else {
+            Ok(i64::from_be_bytes(slice.try_into()?))
+        }
+    }
+
     /// Read either a u32 or u64 word depending on whether the core file is 64-bit.
     /// But, for sanity, always return the result as 64 bits.
     pub fn read_addr(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
@@ -181,6 +190,12 @@ impl<'a> Stream<'a> {
 
     pub fn read_xword(&mut self) -> Result<u64, Box<dyn Error>> {
         let xword = self.reader.read_xword(self.offset)?;
+        self.offset += 8;
+        Ok(xword)
+    }
+
+    pub fn read_sxword(&mut self) -> Result<i64, Box<dyn Error>> {
+        let xword = self.reader.read_sxword(self.offset)?;
         self.offset += 8;
         Ok(xword)
     }

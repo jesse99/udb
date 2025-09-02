@@ -1,11 +1,12 @@
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
 use crate::debug::SymbolIndex;
-use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader};
-use crate::repl::{ExplainArgs, RegistersArgs};
+use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType};
+use crate::repl::{ExplainArgs, RegistersArgs, StringsArgs};
 use crate::utils;
 use crate::utils::Styling;
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
+use core::num;
 use std::cmp::Ordering;
 
 fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
@@ -306,7 +307,7 @@ pub fn info_registers(files: &ElfFiles, args: &RegistersArgs) {
 
 pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
-    let sections = file.find_sections();
+    let sections = file.get_sections();
 
     let mut builder = TableBuilder::new();
     builder.add_col_r("index", "index into sections.");
@@ -463,8 +464,10 @@ fn index_to_str(file: &ElfFile, index: SymbolIndex) -> String {
 
 pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
     let mut builder = TableBuilder::new();
+    builder.add_col_r("index", "symbol index");
     builder.add_col_l("name", "the symbol name");
     builder.add_col_l("type", "the symbol type");
+    builder.add_col_l("dynamic", "true if the symbol is from a shared lib");
     builder.add_col_r("value", "address, absolute value, etc (in hex)");
     builder.add_col_r("size", "size of the value, 0 for unknown or undefined");
     builder.add_col_l("binding", "linkage visibility and behavior");
@@ -481,17 +484,22 @@ pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
     // TODO sort rows? provide some sort of generic table sort support?
     // TODO maybe also filtering options, eg max-results and filter by col value
     //      two options for filter by col? or something like --filter="type=Func"?
-    //      maybe also a colplement option
+    //      maybe also a complement option
     let file = get_file(files, args.exe);
-    let tables = file.find_symbols();
+    let tables = vec![file.find_dynamic_symbols(), file.find_symbols()];
+    let tables = tables.iter().flatten().collect::<Vec<_>>();
     for table in tables.iter() {
-        for e in table.entries.iter() {
+        println!("using section {}", table.section.link);
+        for (i, e) in table.entries.iter().enumerate() {
             // TODO function names can be really long (especially with name mangling)
             // readelf puts a pretty small cap on these, maybe we should default to the same
             let name = file
                 .find_string(table.section.link, e.name as usize)
                 .unwrap_or("unknown".to_string());
+            let name = format!("{} ({})", name, e.name);
+            add_field!(builder, "index", i);
             add_field!(builder, "name", name);
+            add_field!(builder, "dynamic", table.dynamic);
             add_field!(builder, "value", "{:x}", e.value);
             add_field!(builder, "size", e.size);
             add_field!(builder, "type", "{:?}", e.stype);
@@ -502,4 +510,106 @@ pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
     }
 
     builder.println(args.titles, args.explain);
+}
+
+pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
+    // TODO probably should use an arg w/o --exe
+    let mut builder = TableBuilder::new();
+    builder.add_col_r("symbol", "name of the symbol to relocate");
+    builder.add_col_r("index", "index of the symbol to relocate"); // TODO get rid of this
+    builder.add_col_r("string", "index of the symbol string"); // TODO get rid of this
+    builder.add_col_r("dynamic", "true if the symbol is from a shared library");
+    builder.add_col_r("offset", "vaddr for exe or shared object");
+    builder.add_col_l("type", "how to apply the relocation (arch specific)");
+    builder.add_col_r("addend", "optional constant applied during relocation");
+
+    let file = get_file(files, true);
+    let symbols = file.find_symbols();
+    let dynamic_symbols = file.find_dynamic_symbols();
+
+    let rels = files.find_relocations();
+    for r in rels.iter() {
+        // TODO names aren't great for static relocation entries. They do match what
+        // `readelf --syms` reports but they are sucky names. For example,
+        // `readelf --relocs` will report "printf@GLIBC_2.2.5" but we say
+        // "deregister_tm_clones".
+        let name = if r.dynamic {
+            match &dynamic_symbols {
+                Some(t) => {
+                    let e = t.entries.get(r.symbol_index as usize);
+                    e.map(|ue| file.find_string(t.section.link, ue.name as usize))
+                }
+                None => None,
+            }
+        } else {
+            match &symbols {
+                Some(t) => {
+                    let e = t.entries.get(r.symbol_index as usize);
+                    e.map(|ue| file.find_string(t.section.link, ue.name as usize))
+                }
+                None => None,
+            }
+        }
+        .flatten()
+        .unwrap_or(format!("index {}", r.symbol_index));
+
+        let string = if r.dynamic {
+            match &dynamic_symbols {
+                Some(t) => {
+                    let e = t.entries.get(r.symbol_index as usize);
+                    e.map(|ue| ue.name)
+                }
+                None => None,
+            }
+        } else {
+            match &symbols {
+                Some(t) => {
+                    let e = t.entries.get(r.symbol_index as usize);
+                    e.map(|ue| ue.name)
+                }
+                None => None,
+            }
+        }
+        .unwrap_or(0);
+
+        let addend = match r.addend {
+            Some(a) => format!("{}", a),
+            None => "none".to_string(),
+        };
+        add_field!(builder, "symbol", name);
+        add_field!(builder, "dynamic", r.dynamic);
+        add_field!(builder, "index", r.symbol_index);
+        add_field!(builder, "string", string);
+        add_field!(builder, "offset", "{:x}", r.offset);
+        add_field!(builder, "type", "{:?}", r.rtype);
+        add_field!(builder, "addend", addend);
+    }
+
+    builder.println(args.titles, args.explain);
+}
+
+pub fn info_strings(files: &ElfFiles, args: &StringsArgs) {
+    let file = get_file(files, true);
+    let num_sections = file.get_sections().len();
+
+    let mut found = false;
+    for index in 0..num_sections {
+        if args.index.unwrap_or(index) == index {
+            let section = &file.get_sections()[index];
+            if section.stype == SectionType::StringTable {
+                if found {
+                    println!();
+                }
+                println!("section {index}");
+                let strings = file.find_strings(section, args.max_results);
+                for (i, s) in strings.iter().enumerate() {
+                    println!("{i}: {s}");
+                }
+                if strings.len() == args.max_results {
+                    println!("...");
+                }
+                found = true;
+            }
+        }
+    }
 }

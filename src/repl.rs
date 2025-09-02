@@ -55,6 +55,9 @@ pub enum InfoAction {
     /// Show general purpose registers
     Registers(RegistersArgs),
 
+    /// Show relocations
+    Relocations(TableArgs),
+
     /// Show sections
     Sections(TableArgs),
 
@@ -63,6 +66,9 @@ pub enum InfoAction {
 
     /// Show information about signals
     Signals(TableArgs),
+
+    /// Dump string tables
+    Strings(StringsArgs),
 
     /// Show symbols
     Symbols(TableArgs),
@@ -174,6 +180,18 @@ pub enum HexdumpLabels {
 
     /// Show the offset from zero for the first byte on each line
     Zero,
+}
+
+// TODO add a --limit option to truncate? or just --truncate?
+#[derive(Args)]
+pub struct StringsArgs {
+    /// Section index used to dump just one table
+    #[arg(short, long)]
+    pub index: Option<usize>,
+
+    /// Max number of results to report for each table, 0 for unlimited
+    #[arg(short, long, default_value_t = 10)]
+    pub max_results: usize,
 }
 
 impl fmt::Display for HexdumpLabels {
