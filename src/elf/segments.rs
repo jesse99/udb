@@ -10,7 +10,7 @@ const EXECUTE_FLAG: u32 = 0x1;
 const WRITE_FLAG: u32 = 0x2;
 const READ_FLAG: u32 = 0x4;
 
-/// Describes a segment.
+/// Describes a segment. Usually LoadSegment or Note will be used instead of this.
 pub struct ProgramHeader {
     // Elf64_Phdr or Elf32_Phdr, see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html
     pub stype: SegmentType,

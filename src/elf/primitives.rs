@@ -4,6 +4,10 @@ use std::ops::{Add, Sub};
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct SectionIndex(pub u32);
 
+/// Index into a string table.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct StringIndex(pub u32);
+
 /// An index into a byte within an ELF file.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ElfOffset(pub u64);

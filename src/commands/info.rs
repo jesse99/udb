@@ -2,7 +2,8 @@ use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
 use crate::debug::SymbolIndex;
 use crate::elf::{
-    LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, VirtualAddr,
+    LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, StringIndex,
+    VirtualAddr,
 };
 use crate::repl::{ExplainArgs, RegistersArgs, StringsArgs};
 use crate::utils;
@@ -202,7 +203,7 @@ pub fn info_notes(files: &ElfFiles, args: &TableArgs) {
     for note in file.notes.iter() {
         add_field!(builder, "name", note.name);
         add_field!(builder, "type", "{:?}", note.ntype);
-        add_field!(builder, "offset", "{:x}", note.contents.offset);
+        add_field!(builder, "offset", "{:x}", note.contents.start.0);
         add_field!(builder, "size", note.contents.size);
     }
 
@@ -332,12 +333,12 @@ pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
     // by index...
     for (i, section) in sections.iter().enumerate() {
         add_field!(builder, "index", i); // sections are often referenced by index so this is handy
-        match file.find_default_string(section.name as usize) {
+        match file.find_default_string(section.name) {
             Some(n) => {
                 add_field!(builder, "name", n);
             }
             None => {
-                add_field!(builder, "name", section.name);
+                add_field!(builder, "name", section.name.0);
             }
         };
         add_field!(builder, "type", "{:?}", section.stype);
@@ -514,9 +515,9 @@ pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
             // TODO function names can be really long (especially with name mangling)
             // readelf puts a pretty small cap on these, maybe we should default to the same
             let name = file
-                .find_string(table.section.link, e.name as usize)
+                .find_string(table.section.link, e.name)
                 .unwrap_or("unknown".to_string());
-            let name = format!("{} ({})", name, e.name);
+            let name = format!("{} ({})", name, e.name.0);
             add_field!(builder, "index", i);
             add_field!(builder, "name", name);
             add_field!(builder, "dynamic", table.dynamic);
@@ -557,7 +558,7 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
             match &dynamic_symbols {
                 Some(t) => {
                     let e = t.entries.get(r.symbol as usize);
-                    e.map(|ue| file.find_string(t.section.link, ue.name as usize))
+                    e.map(|ue| file.find_string(t.section.link, ue.name))
                 }
                 None => None,
             }
@@ -565,7 +566,7 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
             match &symbols {
                 Some(t) => {
                     let e = t.entries.get(r.symbol as usize);
-                    e.map(|ue| file.find_string(t.section.link, ue.name as usize))
+                    e.map(|ue| file.find_string(t.section.link, ue.name))
                 }
                 None => None,
             }
@@ -590,7 +591,7 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
                 None => None,
             }
         }
-        .unwrap_or(0);
+        .unwrap_or(StringIndex(0));
 
         let addend = match r.addend {
             Some(a) => format!("{}", a),
@@ -599,7 +600,7 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
         add_field!(builder, "symbol", name);
         add_field!(builder, "dynamic", r.dynamic);
         add_field!(builder, "index", r.symbol);
-        add_field!(builder, "string", string);
+        add_field!(builder, "string", string.0);
         add_field!(builder, "offset", "{:x}", r.offset);
         add_field!(builder, "type", "{:?}", r.rtype);
         add_field!(builder, "addend", addend);

@@ -2,7 +2,7 @@
 //! For exe's they provide information about how it was built. Not all may be present.
 use super::Stream;
 use crate::{
-    elf::{Bytes, VirtualAddr},
+    elf::{Bytes, ElfOffset, VirtualAddr},
     utils,
 };
 use std::error::Error;
@@ -10,7 +10,7 @@ use std::error::Error;
 pub struct Note {
     pub name: String,
     pub ntype: NoteType,
-    pub contents: NoteContents,
+    pub contents: Bytes<ElfOffset>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -126,12 +126,6 @@ impl NoteType {
             }
         }
     }
-}
-
-#[derive(Debug)]
-pub struct NoteContents {
-    pub offset: usize,
-    pub size: u32,
 }
 
 pub struct PrStatus {
@@ -356,7 +350,7 @@ pub struct MemoryMappedFile {
     pub file_name: String,
 }
 
-pub fn read_note(s: &mut Stream) -> Result<(String, u32, NoteContents), Box<dyn Error>> {
+pub fn read_note(s: &mut Stream) -> Result<(String, u32, Bytes<ElfOffset>), Box<dyn Error>> {
     let n_namesz = s.read_word()?;
     let n_descsz = s.read_word()?;
     let n_type = s.read_word()?;
@@ -371,9 +365,6 @@ pub fn read_note(s: &mut Stream) -> Result<(String, u32, NoteContents), Box<dyn 
     Ok((
         name,
         n_type,
-        NoteContents {
-            offset: desc_offset,
-            size: n_descsz,
-        },
+        Bytes::<ElfOffset>::from_raw(desc_offset as u64, n_descsz as usize),
     ))
 }

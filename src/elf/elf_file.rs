@@ -6,7 +6,7 @@ use super::{
 use crate::debug::{SymbolTable, SymbolTableEntry};
 use crate::elf::{
     Bytes, ChildSignal, CoreNoteType, ElfOffset, FaultSignal, KillSignal, Note, PosixSignal,
-    Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, VirtualAddr,
+    Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, StringIndex, VirtualAddr,
 };
 use crate::utils::{self, warn};
 use memmap2::Mmap;
@@ -58,20 +58,21 @@ impl ElfFile {
 
     /// Returns a string from the section string table. Note that index can point into
     /// the middle of a string.
-    pub fn find_default_string(&self, str_index: usize) -> Option<String> {
+    pub fn find_default_string(&self, index: StringIndex) -> Option<String> {
         let section = SectionIndex(self.header.string_table_index as u32);
-        self.find_string(section, str_index)
+        self.find_string(section, index)
     }
 
     /// Returns a string from an arbitrary string table. Note that index can point into
     /// the middle of a string.
-    pub fn find_string(&self, section: SectionIndex, str_index: usize) -> Option<String> {
+    pub fn find_string(&self, section: SectionIndex, index: StringIndex) -> Option<String> {
         let h = self.find_section(section)?;
         // TODO really should return an error if indexing past h.offset + h.size
-        match Stream::new(&self.reader, h.obytes.start.0 as usize + str_index).read_string() {
+        match Stream::new(&self.reader, h.obytes.start.0 as usize + index.0 as usize).read_string()
+        {
             Ok(s) => Some(s),
             Err(err) => {
-                utils::warn(&format!("failed to read section string {str_index}: {err}"));
+                utils::warn(&format!("failed to read section string {index:?}: {err}"));
                 None
             }
         }
@@ -95,7 +96,7 @@ impl ElfFile {
 
     pub fn find_section_name(&self, section: SectionIndex) -> Option<String> {
         let h = self.find_section(section)?;
-        self.find_default_string(h.name as usize)
+        self.find_default_string(h.name)
     }
 
     pub fn find_symbols(&self) -> Option<SymbolTable> {
@@ -175,7 +176,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::File) {
-            let mut s = Stream::new(&self.reader, note.contents.offset);
+            let mut s = Stream::new(&self.reader, note.contents.start.0 as usize);
             match get_memory_mapped_files(&mut s) {
                 Ok(files) => Some(files),
                 Err(e) => {
@@ -244,7 +245,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::PrStatus) {
-            let mut s = Stream::new(&self.reader, note.contents.offset);
+            let mut s = Stream::new(&self.reader, note.contents.start.0 as usize);
             match get_prstatus(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {
@@ -320,7 +321,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::SigInfo) {
-            let mut s = Stream::new(&self.reader, note.contents.offset);
+            let mut s = Stream::new(&self.reader, note.contents.start.0 as usize);
             match get_signal_info(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {

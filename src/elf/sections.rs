@@ -1,7 +1,7 @@
 //! Used by the linker and debugger. Also see segments.
 use super::{Reader, Stream};
 use crate::{
-    elf::{Bytes, ElfOffset, SectionIndex, VirtualAddr},
+    elf::{Bytes, ElfOffset, SectionIndex, StringIndex, VirtualAddr},
     utils,
 };
 use std::error::Error;
@@ -25,7 +25,7 @@ const MASKPROC_FLAG: u64 = 0xf0000000; // Processor-specific
 pub struct SectionHeader {
     // Elf32_Shdr or Elf64_Shdr, see https://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
     /// Index into the string table. Zero means no name.
-    pub name: u32,
+    pub name: StringIndex,
 
     /// Type of the section.
     pub stype: SectionType,
@@ -204,7 +204,7 @@ impl SectionHeader {
             let align = s.read_xword()?;
             let entry_size = s.read_xword()?;
             Ok(SectionHeader {
-                name,
+                name: StringIndex(name),
                 stype,
                 flags,
                 obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
@@ -226,7 +226,7 @@ impl SectionHeader {
             let align = s.read_word()? as u64;
             let entry_size = s.read_word()? as u64;
             Ok(SectionHeader {
-                name,
+                name: StringIndex(name),
                 stype,
                 flags,
                 obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
