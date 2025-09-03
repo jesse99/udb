@@ -1,4 +1,4 @@
-use crate::elf::{ElfFile, Offset, LoadSegment, VirtualAddr};
+use crate::elf::{ElfFile, LoadSegment, Offset, VirtualAddr};
 use crate::repl::HexdumpLabels;
 use crate::{
     elf::{ElfFiles, Reader},
@@ -29,7 +29,7 @@ fn raw_backtrace(files: &ElfFiles) -> Result<Vec<VirtualAddr>, Box<dyn Error>> {
                         .as_ref()
                         .unwrap() // safe because find_prstatus worked
                         .reader
-                        .read_xword(offset.0 as usize)
+                        .read_xword(offset)
                         .unwrap(),
                 );
 
@@ -39,7 +39,7 @@ fn raw_backtrace(files: &ElfFiles) -> Result<Vec<VirtualAddr>, Box<dyn Error>> {
                         .as_ref()
                         .unwrap()
                         .reader
-                        .read_xword((offset.0 + 8) as usize)
+                        .read_xword(offset + 8)
                         .unwrap(),
                 );
                 bt.push(addr);
@@ -63,7 +63,8 @@ pub fn backtrace(files: &ElfFiles) {
 pub fn find(files: &ElfFiles, args: &FindArgs) {
     fn match_bytes(reader: &Reader, i: usize, bytes: &[u8]) -> bool {
         for (j, byte) in bytes.iter().enumerate() {
-            match reader.read_byte(i + j) {
+            let offset = Offset::from_raw((i + j) as u64);
+            match reader.read_byte(offset) {
                 Ok(b) => {
                     if b != *byte {
                         return false;
@@ -162,7 +163,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
                 if args.count > 0 {
                     print!("   ");
                     file.reader
-                        .hex_dump(0, offset.0 as usize, args.count, HexdumpLabels::None);
+                        .hex_dump(0, *offset, args.count, HexdumpLabels::None);
                     println!();
                 }
             }
@@ -208,13 +209,13 @@ pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
     if args.offset {
         if args.exe {
             match &files.exe {
-                Some(file) => hexdump_any(file, args.value as usize, args.count),
+                Some(file) => hexdump_any(file, Offset(args.value), args.count),
                 None => utils::warn("--exe was used but there is no exe"),
             }
         } else {
             match &files.core {
-                Some(file) => hexdump_any(file, args.value as usize, args.count),
-                None => hexdump_any(files.exe.as_ref().unwrap(), args.value as usize, args.count),
+                Some(file) => hexdump_any(file, Offset(args.value), args.count),
+                None => hexdump_any(files.exe.as_ref().unwrap(), Offset(args.value), args.count),
             }
         }
     } else {
@@ -249,11 +250,11 @@ pub fn hexdump_segment(file: &ElfFile, args: &HexdumpArgs, load: &LoadSegment) {
     let vaddr = VirtualAddr::from_raw(args.value);
     if let Some(offset) = load.to_offset(vaddr) {
         file.reader
-            .hex_dump(args.value, offset.0 as usize, args.count, args.labels);
+            .hex_dump(args.value, offset, args.count, args.labels);
     }
 }
 
-pub fn hexdump_any(file: &ElfFile, offset: usize, count: usize) {
+pub fn hexdump_any(file: &ElfFile, offset: Offset, count: usize) {
     file.reader.hex_dump(0, offset, count, HexdumpLabels::Zero);
 }
 

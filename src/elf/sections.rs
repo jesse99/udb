@@ -190,7 +190,7 @@ impl SectionHeader {
 }
 
 impl SectionHeader {
-    pub fn new(reader: &Reader, offset: usize) -> Result<Self, Box<dyn Error>> {
+    pub fn new(reader: &Reader, offset: Offset) -> Result<Self, Box<dyn Error>> {
         let mut s = Stream::new(reader, offset);
         if reader.sixty_four_bit {
             let name = s.read_word()?;
@@ -279,7 +279,7 @@ pub enum RelocationX86_64 {
 impl Relocation {
     pub fn with_no_addend(
         reader: &Reader,
-        offset: usize,
+        offset: Offset,
         dynamic: bool,
     ) -> Result<Self, Box<dyn Error>> {
         Relocation::new(reader, offset, false, dynamic)
@@ -287,7 +287,7 @@ impl Relocation {
 
     pub fn with_addend(
         reader: &Reader,
-        offset: usize,
+        offset: Offset,
         dynamic: bool,
     ) -> Result<Self, Box<dyn Error>> {
         Relocation::new(reader, offset, true, dynamic)
@@ -295,7 +295,7 @@ impl Relocation {
 
     fn new(
         reader: &Reader,
-        offset: usize,
+        offset: Offset,
         has_addend: bool,
         dynamic: bool,
     ) -> Result<Self, Box<dyn Error>> {

@@ -1,3 +1,4 @@
+use crate::elf::Offset;
 use crate::repl::HexdumpLabels;
 use crate::utils;
 use crate::utils::Styling;
@@ -44,21 +45,23 @@ impl Reader {
         self.bytes.len()
     }
 
-    pub fn slice(&self, offset: usize, size: usize) -> Result<&[u8], Box<dyn Error>> {
-        if offset + size > self.bytes.len() {
+    pub fn slice(&self, offset: Offset, size: usize) -> Result<&[u8], Box<dyn Error>> {
+        let offset = offset.0 as usize;
+        if offset as usize + size > self.bytes.len() {
             return Err("slice out of bounds".into());
         }
         Ok(&self.bytes[offset..offset + size])
     }
 
-    pub fn read_byte(&self, offset: usize) -> Result<u8, Box<dyn Error>> {
+    pub fn read_byte(&self, offset: Offset) -> Result<u8, Box<dyn Error>> {
         self.bytes
-            .get(offset)
+            .get(offset.0 as usize)
             .ok_or("couldn't read byte at offset".into())
             .copied()
     }
 
-    pub fn read_half(&self, offset: usize) -> Result<u16, Box<dyn Error>> {
+    pub fn read_half(&self, offset: Offset) -> Result<u16, Box<dyn Error>> {
+        let offset = offset.0 as usize;
         let slice = &self.bytes[offset..offset + 2];
         if self.little_endian {
             Ok(u16::from_le_bytes(slice.try_into()?))
@@ -67,7 +70,8 @@ impl Reader {
         }
     }
 
-    pub fn read_word(&self, offset: usize) -> Result<u32, Box<dyn Error>> {
+    pub fn read_word(&self, offset: Offset) -> Result<u32, Box<dyn Error>> {
+        let offset = offset.0 as usize;
         let slice = &self.bytes[offset..offset + 4];
         if self.little_endian {
             Ok(u32::from_le_bytes(slice.try_into()?))
@@ -76,7 +80,8 @@ impl Reader {
         }
     }
 
-    pub fn read_xword(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
+    pub fn read_xword(&self, offset: Offset) -> Result<u64, Box<dyn Error>> {
+        let offset = offset.0 as usize;
         let slice = &self.bytes[offset..offset + 8];
         if self.little_endian {
             Ok(u64::from_le_bytes(slice.try_into()?))
@@ -85,7 +90,8 @@ impl Reader {
         }
     }
 
-    pub fn read_sxword(&self, offset: usize) -> Result<i64, Box<dyn Error>> {
+    pub fn read_sxword(&self, offset: Offset) -> Result<i64, Box<dyn Error>> {
+        let offset = offset.0 as usize;
         let slice = &self.bytes[offset..offset + 8];
         if self.little_endian {
             Ok(i64::from_le_bytes(slice.try_into()?))
@@ -96,7 +102,7 @@ impl Reader {
 
     // /// Read either a u32 or u64 word depending on whether the core file is 64-bit.
     // /// But, for sanity, always return the result as 64 bits.
-    // pub fn read_addr(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
+    // pub fn read_addr(&self, offset: Offset) -> Result<u64, Box<dyn Error>> {
     //     if self.sixty_four_bit {
     //         self.read_xword(offset)
     //     } else {
@@ -105,7 +111,7 @@ impl Reader {
     // }
 
     // // TODO should address and offset be new types?
-    // fn read_offset(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
+    // fn read_offset(&self, offset: Offset) -> Result<u64, Box<dyn Error>> {
     //     if self.sixty_four_bit {
     //         self.read_xword(offset)
     //     } else {
@@ -113,7 +119,8 @@ impl Reader {
     //     }
     // }
 
-    pub fn hex_dump(&self, addr: u64, offset: usize, size: usize, labels: HexdumpLabels) {
+    pub fn hex_dump(&self, addr: u64, offset: Offset, size: usize, labels: HexdumpLabels) {
+        let offset = offset.0 as usize;
         let mut i = offset;
         loop {
             match labels {
@@ -130,21 +137,24 @@ impl Reader {
                 if i + j >= offset + size || i + j >= self.len() {
                     break;
                 }
-                print_styled!("{:02x} ", hex_hex, self.read_byte(i + j).unwrap());
+                let o = Offset((i + j) as u64);
+                print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
             }
             print!(" ");
             for j in 0..8 {
                 if i + j >= offset + size || i + j >= self.len() {
                     break;
                 }
-                print_styled!("{:02x} ", hex_hex, self.read_byte(i + j).unwrap());
+                let o = Offset((i + j) as u64);
+                print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
             }
             print!("   ");
             for j in 0..16 {
                 if i + j >= offset + size || i + j >= self.len() {
                     break;
                 }
-                let ch = self.read_byte(i + j).unwrap() as char;
+                let o = Offset((i + j) as u64);
+                let ch = self.read_byte(o).unwrap() as char;
                 if ch.is_ascii_graphic() {
                     print_styled!("{ch}", hex_ascii);
                 } else {
@@ -162,47 +172,47 @@ impl Reader {
 
 pub struct Stream<'a> {
     pub reader: &'a Reader,
-    pub offset: usize,
+    pub offset: Offset,
 }
 
 impl<'a> Stream<'a> {
-    pub fn new(reader: &'a Reader, offset: usize) -> Self {
+    pub fn new(reader: &'a Reader, offset: Offset) -> Self {
         Stream { reader, offset }
     }
 
     pub fn read_byte(&mut self) -> Result<u8, Box<dyn Error>> {
         let byte = self.reader.read_byte(self.offset)?;
-        self.offset += 1;
+        self.offset = self.offset + 1;
         Ok(byte)
     }
 
     pub fn read_half(&mut self) -> Result<u16, Box<dyn Error>> {
         let half = self.reader.read_half(self.offset)?;
-        self.offset += 2;
+        self.offset = self.offset + 2;
         Ok(half)
     }
 
     pub fn read_word(&mut self) -> Result<u32, Box<dyn Error>> {
         let word = self.reader.read_word(self.offset)?;
-        self.offset += 4;
+        self.offset = self.offset + 4;
         Ok(word)
     }
 
     pub fn read_xword(&mut self) -> Result<u64, Box<dyn Error>> {
         let xword = self.reader.read_xword(self.offset)?;
-        self.offset += 8;
+        self.offset = self.offset + 8;
         Ok(xword)
     }
 
     pub fn read_sxword(&mut self) -> Result<i64, Box<dyn Error>> {
         let xword = self.reader.read_sxword(self.offset)?;
-        self.offset += 8;
+        self.offset = self.offset + 8;
         Ok(xword)
     }
 
     pub fn read_int(&mut self) -> Result<i32, Box<dyn Error>> {
         let word = self.reader.read_word(self.offset)?;
-        self.offset += 4;
+        self.offset = self.offset + 4;
         Ok(word as i32)
     }
 
@@ -211,11 +221,11 @@ impl<'a> Stream<'a> {
     pub fn read_ulong(&mut self) -> Result<u64, Box<dyn Error>> {
         if self.reader.sixty_four_bit {
             let word = self.reader.read_xword(self.offset)?;
-            self.offset += 8;
+            self.offset = self.offset + 8;
             Ok(word)
         } else {
             let word = self.reader.read_word(self.offset)?;
-            self.offset += 4;
+            self.offset = self.offset + 4;
             Ok(word as u64)
         }
     }
@@ -223,11 +233,11 @@ impl<'a> Stream<'a> {
     pub fn read_addr(&mut self) -> Result<u64, Box<dyn Error>> {
         if self.reader.sixty_four_bit {
             let word = self.reader.read_xword(self.offset)?;
-            self.offset += 8;
+            self.offset = self.offset + 8;
             Ok(word)
         } else {
             let word = self.reader.read_word(self.offset)?;
-            self.offset += 4;
+            self.offset = self.offset + 4;
             Ok(word as u64)
         }
     }
@@ -235,11 +245,11 @@ impl<'a> Stream<'a> {
     pub fn read_offset(&mut self) -> Result<u64, Box<dyn Error>> {
         if self.reader.sixty_four_bit {
             let word = self.reader.read_xword(self.offset)?;
-            self.offset += 8;
+            self.offset = self.offset + 8;
             Ok(word)
         } else {
             let word = self.reader.read_word(self.offset)?;
-            self.offset += 4;
+            self.offset = self.offset + 4;
             Ok(word as u64)
         }
     }

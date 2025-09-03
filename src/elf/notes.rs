@@ -357,14 +357,14 @@ pub fn read_note(s: &mut Stream) -> Result<(String, u32, Bytes<Offset>), Box<dyn
 
     let name_bytes = s.reader.slice(s.offset, (n_namesz - 1) as usize)?.to_vec();
     let name = String::from_utf8(name_bytes)?;
-    s.offset += utils::align_to_word(n_namesz) as usize; // align desc to 4-byte boundary
+    s.offset = s.offset + utils::align_to_word(n_namesz) as i64; // align desc to 4-byte boundary
 
     let desc_offset = s.offset;
-    s.offset += utils::align_to_word(n_descsz) as usize; // align next note to 4-byte boundary
+    s.offset = s.offset + utils::align_to_word(n_descsz) as i64; // align next note to 4-byte boundary
 
     Ok((
         name,
         n_type,
-        Bytes::<Offset>::from_raw(desc_offset as u64, n_descsz as usize),
+        Bytes::<Offset>::from_raw(desc_offset.0, n_descsz as usize),
     ))
 }

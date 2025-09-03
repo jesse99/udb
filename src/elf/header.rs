@@ -1,7 +1,7 @@
 //! The ELF header, it includes a mafic number, ABI details, and offsets to the different
 //! parts of the ELF file.
 use super::{Reader, Stream};
-use crate::utils;
+use crate::{elf::Offset, utils};
 use std::error::Error;
 
 // See https://refspecs.linuxfoundation.org/elf/gabi4+/ch4.eheader.html
@@ -52,7 +52,7 @@ impl ElfHeader {
     pub fn new(reader: &Reader) -> Result<Self, Box<dyn Error>> {
         const EI_NIDENT: usize = 16;
 
-        let mut s = Stream::new(reader, EI_NIDENT);
+        let mut s = Stream::new(reader, Offset(EI_NIDENT as u64));
         let etype = s.read_half()?;
         let machine = s.read_half()?;
         let e_version = s.read_word()?;
@@ -80,10 +80,10 @@ impl ElfHeader {
         )?;
 
         Ok(ElfHeader {
-            osabi: reader.read_byte(0x07)?,
+            osabi: reader.read_byte(Offset(0x07))?,
             etype,
-            class: reader.read_byte(0x04)?,
-            abiversion: reader.read_byte(0x08)?,
+            class: reader.read_byte(Offset(0x04))?,
+            abiversion: reader.read_byte(Offset(0x08))?,
             machine,
             ph_offset,
             flags,

@@ -68,8 +68,8 @@ impl ElfFile {
     pub fn find_string(&self, section: SectionIndex, index: StringIndex) -> Option<String> {
         let h = self.find_section(section)?;
         // TODO really should return an error if indexing past h.offset + h.size
-        match Stream::new(&self.reader, h.obytes.start.0 as usize + index.0 as usize).read_string()
-        {
+        let offset = h.obytes.start + index.0 as i64;
+        match Stream::new(&self.reader, offset).read_string() {
             Ok(s) => Some(s),
             Err(err) => {
                 utils::warn(&format!("failed to read section string {index:?}: {err}"));
@@ -81,8 +81,8 @@ impl ElfFile {
     pub fn find_strings(&self, section: &SectionHeader, max: usize) -> Vec<String> {
         let mut result = Vec::new();
         if section.stype == SectionType::StringTable {
-            let mut stream = Stream::new(&self.reader, section.obytes.start.0 as usize);
-            while (stream.offset as u64) < section.obytes.end().0 {
+            let mut stream = Stream::new(&self.reader, section.obytes.start);
+            while stream.offset < section.obytes.end() {
                 if let Ok(s) = stream.read_string() {
                     result.push(s);
                     if result.len() == max {
@@ -109,16 +109,18 @@ impl ElfFile {
 
     pub fn find_segments(reader: &Reader, header: &ElfHeader) -> Vec<ProgramHeader> {
         let mut segments = Vec::new();
-        let mut offset = header.ph_offset as usize;
+        let mut offset = Offset(header.ph_offset);
 
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
                 Ok(ph) => segments.push(ph),
                 Err(err) => {
-                    utils::warn(&format!("failed to read program header at {offset}: {err}"));
+                    utils::warn(&format!(
+                        "failed to read program header at {offset:?}: {err}"
+                    ));
                 }
             }
-            offset += header.ph_entry_size as usize;
+            offset = offset + header.ph_entry_size as i64;
         }
         segments
     }
@@ -166,7 +168,7 @@ impl ElfFile {
                     }
                 } else {
                     utils::warn(&format!(
-                        "Failed to read MemoryMappedFile at offset {}",
+                        "Failed to read MemoryMappedFile at offset {:?}",
                         s.offset
                     ));
                 }
@@ -176,7 +178,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::File) {
-            let mut s = Stream::new(&self.reader, note.contents.start.0 as usize);
+            let mut s = Stream::new(&self.reader, note.contents.start);
             match get_memory_mapped_files(&mut s) {
                 Ok(files) => Some(files),
                 Err(e) => {
@@ -245,7 +247,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::PrStatus) {
-            let mut s = Stream::new(&self.reader, note.contents.start.0 as usize);
+            let mut s = Stream::new(&self.reader, note.contents.start);
             match get_prstatus(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {
@@ -321,7 +323,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::SigInfo) {
-            let mut s = Stream::new(&self.reader, note.contents.start.0 as usize);
+            let mut s = Stream::new(&self.reader, note.contents.start);
             match get_signal_info(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {
@@ -335,21 +337,21 @@ impl ElfFile {
     }
 
     pub fn find_relocations(&self, result: &mut Vec<Relocation>) {
-        fn load_with(reader: &Reader, offset: u64, dynamic: bool) -> Option<Relocation> {
-            match Relocation::with_addend(reader, offset as usize, dynamic) {
+        fn load_with(reader: &Reader, offset: Offset, dynamic: bool) -> Option<Relocation> {
+            match Relocation::with_addend(reader, offset, dynamic) {
                 Ok(r) => Some(r),
                 Err(err) => {
-                    utils::warn(&format!("couldn't read relocation at {offset}: {err}"));
+                    utils::warn(&format!("couldn't read relocation at {offset:?}: {err}"));
                     None
                 }
             }
         }
 
-        fn load_without(reader: &Reader, offset: u64, dynamic: bool) -> Option<Relocation> {
-            match Relocation::with_no_addend(reader, offset as usize, dynamic) {
+        fn load_without(reader: &Reader, offset: Offset, dynamic: bool) -> Option<Relocation> {
+            match Relocation::with_no_addend(reader, offset, dynamic) {
                 Ok(r) => Some(r),
                 Err(err) => {
-                    utils::warn(&format!("couldn't read relocation at {offset}: {err}"));
+                    utils::warn(&format!("couldn't read relocation at {offset:?}: {err}"));
                     None
                 }
             }
@@ -360,13 +362,13 @@ impl ElfFile {
             section: &SectionHeader,
             result: &mut Vec<Relocation>,
         ) {
-            let mut offset = section.obytes.start.0;
-            while offset + section.entry_size <= section.obytes.end().0 {
+            let mut offset = section.obytes.start;
+            while offset + section.entry_size as i64 <= section.obytes.end() {
                 let dynamic = section.info == 0; // TODO better to look at section name?
                 if let Some(r) = load_with(reader, offset, dynamic) {
                     result.push(r)
                 }
-                offset += section.entry_size;
+                offset = offset + section.entry_size as i64;
             }
         }
 
@@ -375,13 +377,13 @@ impl ElfFile {
             section: &SectionHeader,
             result: &mut Vec<Relocation>,
         ) {
-            let mut offset = section.obytes.start.0;
-            while offset + section.entry_size <= section.obytes.end().0 {
+            let mut offset = section.obytes.start;
+            while offset + section.entry_size as i64 <= section.obytes.end() {
                 let dynamic = section.info == 0; // TODO better to look at section name?
                 if let Some(r) = load_without(reader, offset, dynamic) {
                     result.push(r)
                 }
-                offset += section.entry_size;
+                offset = offset + section.entry_size as i64;
             }
         }
 
@@ -417,16 +419,16 @@ impl ElfFile {
         for section in self.sections.iter() {
             if section.stype == stype {
                 // TODO warn if there is more than one of these
-                let mut offset = section.obytes.start.0;
+                let mut offset = section.obytes.start;
                 let mut entries = Vec::new();
-                while offset < section.obytes.end().0 {
-                    match SymbolTableEntry::new(&self.reader, offset as usize) {
+                while offset < section.obytes.end() {
+                    match SymbolTableEntry::new(&self.reader, offset) {
                         Ok(s) => entries.push(s),
-                        Err(err) => {
-                            warn(&format!("failed to read symbols at offset {offset}: {err}"))
-                        }
+                        Err(err) => warn(&format!(
+                            "failed to read symbols at offset {offset:?}: {err}"
+                        )),
                     }
-                    offset += section.entry_size;
+                    offset = offset + section.entry_size as i64;
                 }
                 let table = SymbolTable {
                     section: section.clone(),
@@ -441,7 +443,7 @@ impl ElfFile {
 
     fn load_loads(reader: &Reader, header: &ElfHeader) -> Vec<LoadSegment> {
         let mut loads = Vec::new();
-        let mut offset = header.ph_offset as usize;
+        let mut offset = Offset(header.ph_offset as u64);
 
         // Even a large core file has a small number of program headers, so it's OK to
         // re-iterate over them.
@@ -459,11 +461,11 @@ impl ElfFile {
                         });
                     }
                 }
-                Err(err) => {
-                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
-                }
+                Err(err) => utils::warn(&format!(
+                    "failed to read program header at {offset:?}: {err}"
+                )),
             }
-            offset += header.ph_entry_size as usize;
+            offset = offset + header.ph_entry_size as i64;
         }
         loads
     }
@@ -477,13 +479,13 @@ impl ElfFile {
                     contents,
                 })
             } else {
-                utils::warn(&format!("Failed to read note at offset {}", s.offset));
+                utils::warn(&format!("Failed to read note at offset {:?}", s.offset));
                 None
             }
         }
 
         let mut notes = Vec::new();
-        let mut offset = header.ph_offset as usize;
+        let mut offset = Offset(header.ph_offset as u64);
 
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
@@ -492,8 +494,10 @@ impl ElfFile {
                     // truncated). Not all notes are essential so we'll try to continue even if
                     // a note cannot be read.
                     if ph.stype == SegmentType::Note {
-                        let mut s = Stream::new(reader, ph.offset as usize);
-                        while s.offset < (ph.offset + ph.file_size) as usize {
+                        let start = Offset(ph.offset);
+                        let end = start + ph.file_size as i64;
+                        let mut s = Stream::new(reader, start);
+                        while s.offset < end {
                             if let Some(note) = load_note(&mut s) {
                                 // TODO may want to warn if get a second note of the same type
                                 notes.push(note);
@@ -501,18 +505,18 @@ impl ElfFile {
                         }
                     }
                 }
-                Err(err) => {
-                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
-                }
+                Err(err) => utils::warn(&format!(
+                    "failed to read program header at {offset:?}: {err}"
+                )),
             }
-            offset += header.ph_entry_size as usize;
+            offset = offset + header.ph_entry_size as i64;
         }
         notes
     }
 
     // This is just here so we can report unknown segments.
     fn load_others(reader: &Reader, header: &ElfHeader) {
-        let mut offset = header.ph_offset as usize;
+        let mut offset = Offset(header.ph_offset as u64);
 
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
@@ -525,27 +529,27 @@ impl ElfFile {
                     SegmentType::Phdr => (),
                     _ => utils::warn(&format!("Ignoring segment type {:?}", ph.stype)),
                 },
-                Err(err) => {
-                    utils::warn(&format!("failed to read program header at {offset}: {err}"))
-                }
+                Err(err) => utils::warn(&format!(
+                    "failed to read program header at {offset:?}: {err}"
+                )),
             }
-            offset += header.ph_entry_size as usize;
+            offset = offset + header.ph_entry_size as i64;
         }
     }
 
     fn load_sections(reader: &Reader, header: &ElfHeader) -> Vec<SectionHeader> {
         let mut sections = Vec::new();
-        let mut offset = header.section_offset as usize;
+        let mut offset = Offset(header.section_offset as u64);
 
         for _ in 0..header.num_section_entries {
             match SectionHeader::new(reader, offset) {
                 Ok(h) => sections.push(h),
 
-                Err(err) => {
-                    utils::warn(&format!("failed to read section header at {offset}: {err}"))
-                }
+                Err(err) => utils::warn(&format!(
+                    "failed to read section header at {offset:?}: {err}"
+                )),
             }
-            offset += header.section_entry_size as usize;
+            offset = offset + header.section_entry_size as i64;
         }
         sections
     }
