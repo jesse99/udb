@@ -65,7 +65,6 @@ fn main() -> Result<(), Box<dyn Error>> {
             InfoAction::Signals(args) => commands::info_signals(&files, &args),
             InfoAction::Strings(args) => commands::info_strings(&files, &args),
             InfoAction::Symbols(args) => commands::info_symbols(&files, &args),
-            _ => todo!(),
         },
         Hexdump(args) => commands::hexdump(&files, &args),
         Quit => process::exit(0),
@@ -106,26 +105,26 @@ pub struct MyPrompt {
 }
 
 impl Prompt for MyPrompt {
-    fn render_prompt_left(&self) -> Cow<str> {
+    fn render_prompt_left(&self) -> Cow<'_, str> {
         Cow::Borrowed("udb")
     }
 
-    fn render_prompt_right(&self) -> Cow<str> {
+    fn render_prompt_right(&self) -> Cow<'_, str> {
         Cow::Borrowed("")
     }
 
-    fn render_prompt_indicator(&self, prompt_mode: PromptEditMode) -> Cow<str> {
+    fn render_prompt_indicator(&self, _prompt_mode: PromptEditMode) -> Cow<'_, str> {
         Cow::Borrowed("> ")
     }
 
-    fn render_prompt_multiline_indicator(&self) -> Cow<str> {
+    fn render_prompt_multiline_indicator(&self) -> Cow<'_, str> {
         self.default.render_prompt_multiline_indicator()
     }
 
     fn render_prompt_history_search_indicator(
         &self,
         history_search: PromptHistorySearch,
-    ) -> Cow<str> {
+    ) -> Cow<'_, str> {
         self.default
             .render_prompt_history_search_indicator(history_search)
     }

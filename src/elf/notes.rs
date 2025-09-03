@@ -140,9 +140,8 @@ pub struct PrStatus {
     /// https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp#Signal_Codes for more.
     pub signal_code: i32,
 
-    /// If non-zero, the errno associated with the signal.
-    pub errno: i32,
-
+    // /// If non-zero, the errno associated with the signal.
+    // pub errno: i32,
     /// The process ID of the process that generated this core file.
     pub pid: i32,
 
@@ -153,18 +152,17 @@ pub struct PrStatus {
 
 /// Similar to the signal info in PrStatus but with additional details.
 pub struct SigInfo {
-    /// The signal that terminated the process.
-    pub signal_num: i32,
+    // /// The signal that terminated the process.
+    // pub signal_num: i32,
 
-    /// If non-zero, the errno associated with the signal.
-    pub errno: i32,
+    // /// If non-zero, the errno associated with the signal.
+    // pub errno: i32,
 
-    /// Further details about the signal. For example, code can be SEGV_MAPERR (bad
-    /// address) or SEGV_ACCERR (bad permessions) for the SIGSEGV signal. See
-    /// https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp#Signal_Codes for more.
-    /// TODO is this right?
-    pub signal_code: i32,
-
+    // /// Further details about the signal. For example, code can be SEGV_MAPERR (bad
+    // /// address) or SEGV_ACCERR (bad permessions) for the SIGSEGV signal. See
+    // /// https://www.mkssoftware.com/docs/man5/siginfo_t.5.asp#Signal_Codes for more.
+    // /// TODO is this right?
+    // pub signal_code: i32,
     /// Information associated with the specific signal that killed the process.
     pub details: SignalDetails,
 }
@@ -352,9 +350,8 @@ pub struct MemoryMappedFile {
     /// Address of the end of the file in memory.
     pub end_addr: u64,
 
-    /// Offset into the file used when memory mapping.
-    pub offset: u64,
-
+    // /// Offset into the file used when memory mapping.
+    // pub offset: u64,
     /// The name of the file.
     pub file_name: String,
 }

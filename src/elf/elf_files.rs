@@ -44,12 +44,12 @@ impl ElfFiles {
         }
     }
 
-    pub fn find_vaddr(&self, offset: u64) -> Option<(&LoadSegment, u64)> {
-        match &self.core {
-            Some(c) => c.find_vaddr(offset),
-            None => None,
-        }
-    }
+    // pub fn find_vaddr(&self, offset: u64) -> Option<(&LoadSegment, u64)> {
+    //     match &self.core {
+    //         Some(c) => c.find_vaddr(offset),
+    //         None => None,
+    //     }
+    // }
 
     pub fn find_relocations(&self) -> Vec<Relocation> {
         let mut result = Vec::new();

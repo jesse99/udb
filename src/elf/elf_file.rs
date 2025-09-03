@@ -139,7 +139,7 @@ impl ElfFile {
             // This is annoying and not useful so we we'll merge them together.
             // Note that the end of one line usually matches the start of the next.
             let count = s.read_ulong()?;
-            let page_size = s.read_ulong()?;
+            let _page_size = s.read_ulong()?;
 
             let mut elements = Vec::new();
             for _ in 0..count {
@@ -150,7 +150,7 @@ impl ElfFile {
             }
 
             let mut files: Vec<MemoryMappedFile> = Vec::new();
-            for (start, end, offset) in elements {
+            for (start, end, _offset) in elements {
                 if let Ok(file_name) = s.read_string() {
                     if let Some(old) = files.last_mut()
                         && start == old.end_addr
@@ -161,7 +161,7 @@ impl ElfFile {
                         files.push(MemoryMappedFile {
                             start_addr: start,
                             end_addr: end,
-                            offset: offset * page_size,
+                            // offset: offset * page_size,
                             file_name,
                         });
                     }
@@ -192,13 +192,10 @@ impl ElfFile {
 
     pub fn find_core_note(&self, ntype: CoreNoteType) -> Option<&Note> {
         for note in self.notes.iter() {
-            match &note.ntype {
-                NoteType::Core(t) => {
-                    if *t == ntype {
-                        return Some(note);
-                    }
-                }
-                _ => (),
+            if let NoteType::Core(t) = &note.ntype
+                && *t == ntype
+            {
+                return Some(note);
             }
         }
         None
@@ -209,7 +206,7 @@ impl ElfFile {
             // See elf_prstatus in https://docs.huihoo.com/doxygen/linux/kernel/3.7/uapi_2linux_2elfcore_8h_source.html
             let signal_num = s.read_int()?;
             let signal_code = s.read_int()?;
-            let errno = s.read_int()?;
+            let _errno = s.read_int()?;
             let _current_signal = s.read_half()?; // This is the current signal, not the one that caused the core dump.
             let _padding = s.read_half()?;
             let _pending_signals = s.read_xword()?;
@@ -242,7 +239,7 @@ impl ElfFile {
             Ok(PrStatus {
                 signal_num,
                 signal_code,
-                errno,
+                // errno,
                 pid,
                 registers,
             })
@@ -275,11 +272,11 @@ impl ElfFile {
 
             // See https://elixir.bootlin.com/linux/v4.9/source/arch/ia64/include/uapi/asm/siginfo.h#L83
             // and https://elixir.bootlin.com/linux/v4.9/source/arch/arm64/kernel/signal32.c#L144
-            let si_signo = s.read_xword()? as i32; // TODO I think these fields are all emitted as 64 bits?
-            let si_errno = s.read_xword()? as i32; // TODO need to test this better
-            let si_code = s.read_xword()? as i32; // TODO this seems completely wrong: we're getting kill for a seg fault
+            let _si_signo = s.read_xword()? as i32; // TODO I think these fields are all emitted as 64 bits?
+            let _si_errno = s.read_xword()? as i32; // TODO need to test this better
+            let _si_code = s.read_xword()? as i32; // TODO this seems completely wrong: we're getting kill for a seg fault
 
-            let details = match (si_code as u32) & SI_MASK {
+            let details = match (_si_code as u32) & SI_MASK {
                 SI_KILL => {
                     let sender_pid = s.read_xword()? as i32;
                     let sender_uid = s.read_xword()? as i32;
@@ -317,9 +314,9 @@ impl ElfFile {
             };
 
             Ok(SigInfo {
-                signal_num: si_signo,
-                errno: si_errno,
-                signal_code: si_code,
+                // signal_num: si_signo,
+                // errno: si_errno,
+                // signal_code: si_code,
                 details,
             })
         }
@@ -457,7 +454,7 @@ impl ElfFile {
                             offset: ph.offset,
                             size: ph.mem_size,
                             vaddr: ph.vaddr,
-                            paddr: ph.paddr,
+                            // paddr: ph.paddr,
                             flags: ph.flags,
                         });
                     }
@@ -589,10 +586,7 @@ mod tests {
             // start_addr and end_addr will change with each build
             // size will change if we tweak the code
             // so we won't test any of that
-            Some(files) => files
-                .iter()
-                .map(|f| format!("{} {}\n", f.offset, f.file_name))
-                .collect(),
+            Some(files) => files.iter().map(|f| format!("{}\n", f.file_name)).collect(),
             None => "no files".to_string(),
         };
         insta::assert_snapshot!(s);

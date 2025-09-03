@@ -6,7 +6,6 @@ use crate::repl::{ExplainArgs, RegistersArgs, StringsArgs};
 use crate::utils;
 use crate::utils::Styling;
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
-use core::num;
 use std::cmp::Ordering;
 
 fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
@@ -442,6 +441,26 @@ pub fn info_signals(files: &ElfFiles, args: &TableArgs) {
                     "the uid of the process that sent the signal"
                 );
             }
+            crate::elf::SignalDetails::Child(details) => {
+                add_simple!(
+                    b,
+                    "child_pid",
+                    details.child_pid,
+                    "pid of the child process"
+                );
+                add_simple!(
+                    b,
+                    "child_uid",
+                    details.child_uid,
+                    "uid of the child process"
+                );
+                add_simple!(
+                    b,
+                    "exit_code",
+                    details.exit_code,
+                    "exit code of the child process"
+                );
+            }
             _ => (),
         }
         b.println(args.explain);
@@ -486,7 +505,7 @@ pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
     //      two options for filter by col? or something like --filter="type=Func"?
     //      maybe also a complement option
     let file = get_file(files, args.exe);
-    let tables = vec![file.find_dynamic_symbols(), file.find_symbols()];
+    let tables = [file.find_dynamic_symbols(), file.find_symbols()];
     let tables = tables.iter().flatten().collect::<Vec<_>>();
     for table in tables.iter() {
         println!("using section {}", table.section.link);

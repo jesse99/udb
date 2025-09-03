@@ -58,7 +58,7 @@ pub fn backtrace(files: &ElfFiles) {
 }
 
 pub fn find(files: &ElfFiles, args: &FindArgs) {
-    fn match_bytes(reader: &Reader, i: usize, bytes: &Vec<u8>) -> bool {
+    fn match_bytes(reader: &Reader, i: usize, bytes: &[u8]) -> bool {
         for (j, byte) in bytes.iter().enumerate() {
             match reader.read_byte(i + j) {
                 Ok(b) => {
@@ -72,7 +72,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         true
     }
 
-    fn search_load_segments(core: &ElfFile, args: &FindArgs, bytes: &Vec<u8>) {
+    fn search_load_segments(core: &ElfFile, args: &FindArgs, bytes: &[u8]) {
         let mut count = 0;
         for load in core.loads.iter() {
             let mut i = 0;
@@ -106,7 +106,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         }
     }
 
-    fn search_all(prefix: &str, file: &ElfFile, args: &FindArgs, bytes: &Vec<u8>) {
+    fn search_all(prefix: &str, file: &ElfFile, args: &FindArgs, bytes: &[u8]) {
         let mut count = 0;
         let mut offset = 0;
         let mut offsets = Vec::new(); // we'll print addresses first
@@ -166,7 +166,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         }
     }
 
-    fn find(files: &ElfFiles, args: &FindArgs, bytes: &Vec<u8>) {
+    fn find(files: &ElfFiles, args: &FindArgs, bytes: &[u8]) {
         if args.all {
             if let Some(core) = &files.core
                 && let Some(exe) = &files.exe
@@ -178,14 +178,12 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
             } else {
                 search_all("", files.exe.as_ref().unwrap(), args, bytes); // safe because we'll always have either core or exe
             }
+        } else if let Some(core) = &files.core {
+            search_load_segments(core, args, bytes);
         } else {
-            if let Some(core) = &files.core {
-                search_load_segments(core, args, bytes);
-            } else {
-                // Technically we should only do this if --all is used but it's kind of
-                // silly to not do a search if all we have is an exe.
-                search_all("", files.exe.as_ref().unwrap(), args, bytes);
-            }
+            // Technically we should only do this if --all is used but it's kind of
+            // silly to not do a search if all we have is an exe.
+            search_all("", files.exe.as_ref().unwrap(), args, bytes);
         }
     }
 

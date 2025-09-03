@@ -91,9 +91,8 @@ pub struct LoadSegment {
     /// The virtual address the segment starts at.
     pub vaddr: u64,
 
-    /// The physical address the segment starts at. Will be zero for core files.
-    pub paddr: u64,
-
+    // /// The physical address the segment starts at. Will be zero for core files.
+    // pub paddr: u64,
     /// Readable, writeable, and/or executable.
     pub flags: u32,
 }

@@ -94,24 +94,24 @@ impl Reader {
         }
     }
 
-    /// Read either a u32 or u64 word depending on whether the core file is 64-bit.
-    /// But, for sanity, always return the result as 64 bits.
-    pub fn read_addr(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
-        if self.sixty_four_bit {
-            self.read_xword(offset)
-        } else {
-            Ok(self.read_word(offset)? as u64)
-        }
-    }
+    // /// Read either a u32 or u64 word depending on whether the core file is 64-bit.
+    // /// But, for sanity, always return the result as 64 bits.
+    // pub fn read_addr(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
+    //     if self.sixty_four_bit {
+    //         self.read_xword(offset)
+    //     } else {
+    //         Ok(self.read_word(offset)? as u64)
+    //     }
+    // }
 
-    // TODO should address and offset be new types?
-    fn read_offset(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
-        if self.sixty_four_bit {
-            self.read_xword(offset)
-        } else {
-            Ok(self.read_word(offset)? as u64)
-        }
-    }
+    // // TODO should address and offset be new types?
+    // fn read_offset(&self, offset: usize) -> Result<u64, Box<dyn Error>> {
+    //     if self.sixty_four_bit {
+    //         self.read_xword(offset)
+    //     } else {
+    //         Ok(self.read_word(offset)? as u64)
+    //     }
+    // }
 
     pub fn hex_dump(&self, addr: u64, offset: usize, size: usize, labels: HexdumpLabels) {
         let mut i = offset;
@@ -212,11 +212,11 @@ impl<'a> Stream<'a> {
         if self.reader.sixty_four_bit {
             let word = self.reader.read_xword(self.offset)?;
             self.offset += 8;
-            return Ok(word);
+            Ok(word)
         } else {
             let word = self.reader.read_word(self.offset)?;
             self.offset += 4;
-            return Ok(word as u64);
+            Ok(word as u64)
         }
     }
 
@@ -224,11 +224,11 @@ impl<'a> Stream<'a> {
         if self.reader.sixty_four_bit {
             let word = self.reader.read_xword(self.offset)?;
             self.offset += 8;
-            return Ok(word);
+            Ok(word)
         } else {
             let word = self.reader.read_word(self.offset)?;
             self.offset += 4;
-            return Ok(word as u64);
+            Ok(word as u64)
         }
     }
 
@@ -236,11 +236,11 @@ impl<'a> Stream<'a> {
         if self.reader.sixty_four_bit {
             let word = self.reader.read_xword(self.offset)?;
             self.offset += 8;
-            return Ok(word);
+            Ok(word)
         } else {
             let word = self.reader.read_word(self.offset)?;
             self.offset += 4;
-            return Ok(word as u64);
+            Ok(word as u64)
         }
     }
 
