@@ -1,12 +1,16 @@
 use std::ops::{Add, Sub};
 
+/// Index into the section table.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
+pub struct SectionIndex(pub u32);
+
 /// An index into a byte within an ELF file.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct ElfOffset(pub u64);
 
 /// The address of a byte in the process that cored. These are normally associated with
 /// one of the load segments in the core file.
-#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct VirtualAddr(pub u64);
 
 /// A range of bytes that can be addressed using either offsets into an ELF file or

@@ -347,7 +347,7 @@ pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
         add_field!(builder, "size", section.vbytes.size);
         add_field!(builder, "entry_size", section.entry_size);
         add_field!(builder, "align", section.align);
-        add_field!(builder, "link", section.link);
+        add_field!(builder, "link", section.link.0);
         add_field!(builder, "info", section.info);
     }
 
@@ -475,7 +475,7 @@ fn index_to_str(file: &ElfFile, index: SymbolIndex) -> String {
         SymbolIndex::Abs => "Value".to_string(),
         SymbolIndex::Common => "Common".to_string(),
         SymbolIndex::Index(i) => file
-            .find_section_name(i as u32)
+            .find_section_name(i)
             .unwrap_or("bad section index".to_string()),
         SymbolIndex::Undef => "".to_string(),
         SymbolIndex::XIndex => "not implemented".to_string(), // TODO
@@ -509,7 +509,7 @@ pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
     let tables = [file.find_dynamic_symbols(), file.find_symbols()];
     let tables = tables.iter().flatten().collect::<Vec<_>>();
     for table in tables.iter() {
-        println!("using section {}", table.section.link);
+        println!("using section {}", table.section.link.0);
         for (i, e) in table.entries.iter().enumerate() {
             // TODO function names can be really long (especially with name mangling)
             // readelf puts a pretty small cap on these, maybe we should default to the same
@@ -556,7 +556,7 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
         let name = if r.dynamic {
             match &dynamic_symbols {
                 Some(t) => {
-                    let e = t.entries.get(r.symbol_index as usize);
+                    let e = t.entries.get(r.symbol as usize);
                     e.map(|ue| file.find_string(t.section.link, ue.name as usize))
                 }
                 None => None,
@@ -564,19 +564,19 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
         } else {
             match &symbols {
                 Some(t) => {
-                    let e = t.entries.get(r.symbol_index as usize);
+                    let e = t.entries.get(r.symbol as usize);
                     e.map(|ue| file.find_string(t.section.link, ue.name as usize))
                 }
                 None => None,
             }
         }
         .flatten()
-        .unwrap_or(format!("index {}", r.symbol_index));
+        .unwrap_or(format!("index {}", r.symbol));
 
         let string = if r.dynamic {
             match &dynamic_symbols {
                 Some(t) => {
-                    let e = t.entries.get(r.symbol_index as usize);
+                    let e = t.entries.get(r.symbol as usize);
                     e.map(|ue| ue.name)
                 }
                 None => None,
@@ -584,7 +584,7 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
         } else {
             match &symbols {
                 Some(t) => {
-                    let e = t.entries.get(r.symbol_index as usize);
+                    let e = t.entries.get(r.symbol as usize);
                     e.map(|ue| ue.name)
                 }
                 None => None,
@@ -598,7 +598,7 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
         };
         add_field!(builder, "symbol", name);
         add_field!(builder, "dynamic", r.dynamic);
-        add_field!(builder, "index", r.symbol_index);
+        add_field!(builder, "index", r.symbol);
         add_field!(builder, "string", string);
         add_field!(builder, "offset", "{:x}", r.offset);
         add_field!(builder, "type", "{:?}", r.rtype);

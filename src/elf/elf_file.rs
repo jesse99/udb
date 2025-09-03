@@ -1,7 +1,7 @@
 //! Data within a core file or exe.
 use super::{
     ElfHeader, LoadSegment, MemoryMappedFile, NoteType, PrStatus, ProgramHeader, Reader,
-    SegmentType, Stream,
+    SectionIndex, SegmentType, Stream,
 };
 use crate::debug::{SymbolTable, SymbolTableEntry};
 use crate::elf::{
@@ -59,13 +59,14 @@ impl ElfFile {
     /// Returns a string from the section string table. Note that index can point into
     /// the middle of a string.
     pub fn find_default_string(&self, str_index: usize) -> Option<String> {
-        self.find_string(self.header.string_table_index as u32, str_index)
+        let section = SectionIndex(self.header.string_table_index as u32);
+        self.find_string(section, str_index)
     }
 
     /// Returns a string from an arbitrary string table. Note that index can point into
     /// the middle of a string.
-    pub fn find_string(&self, section_index: u32, str_index: usize) -> Option<String> {
-        let h = self.find_section(section_index)?;
+    pub fn find_string(&self, section: SectionIndex, str_index: usize) -> Option<String> {
+        let h = self.find_section(section)?;
         // TODO really should return an error if indexing past h.offset + h.size
         match Stream::new(&self.reader, h.obytes.start.0 as usize + str_index).read_string() {
             Ok(s) => Some(s),
@@ -92,8 +93,8 @@ impl ElfFile {
         result
     }
 
-    pub fn find_section_name(&self, section_index: u32) -> Option<String> {
-        let h = self.find_section(section_index)?;
+    pub fn find_section_name(&self, section: SectionIndex) -> Option<String> {
+        let h = self.find_section(section)?;
         self.find_default_string(h.name as usize)
     }
 
@@ -402,8 +403,8 @@ impl ElfFile {
 }
 
 impl ElfFile {
-    fn find_section(&self, section_index: u32) -> Option<&SectionHeader> {
-        let section_index = section_index as usize;
+    fn find_section(&self, section: SectionIndex) -> Option<&SectionHeader> {
+        let section_index = section.0 as usize;
         let section = self.sections.get(section_index);
         if section.is_none() {
             utils::warn(&format!("bad section index: {section_index}"));

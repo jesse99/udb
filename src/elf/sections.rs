@@ -1,7 +1,7 @@
 //! Used by the linker and debugger. Also see segments.
 use super::{Reader, Stream};
 use crate::{
-    elf::{Bytes, ElfOffset, VirtualAddr},
+    elf::{Bytes, ElfOffset, SectionIndex, VirtualAddr},
     utils,
 };
 use std::error::Error;
@@ -23,7 +23,7 @@ const MASKPROC_FLAG: u64 = 0xf0000000; // Processor-specific
 /// Describes a section.
 #[derive(Clone)]
 pub struct SectionHeader {
-    // Elf32_Shdr or Elf64_Shdr, see hthttps://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
+    // Elf32_Shdr or Elf64_Shdr, see https://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
     /// Index into the string table. Zero means no name.
     pub name: u32,
 
@@ -41,7 +41,7 @@ pub struct SectionHeader {
 
     /// Link to another section with related information, usually a string
     /// or symbol table.
-    pub link: u32,
+    pub link: SectionIndex,
 
     /// Additional section info.
     pub info: u32,
@@ -209,7 +209,7 @@ impl SectionHeader {
                 flags,
                 obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
                 vbytes: Bytes::<VirtualAddr>::from_raw(vaddr, size as usize),
-                link,
+                link: SectionIndex(link),
                 info,
                 align,
                 entry_size,
@@ -231,7 +231,7 @@ impl SectionHeader {
                 flags,
                 obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
                 vbytes: Bytes::<VirtualAddr>::from_raw(vaddr, size as usize),
-                link,
+                link: SectionIndex(link),
                 info,
                 align,
                 entry_size,
@@ -243,9 +243,9 @@ impl SectionHeader {
 // see https://intezer.com/blog/executable-and-linkable-format-101-part-3-relocations/
 #[derive(Debug)]
 pub struct Relocation {
-    pub offset: u64,
+    pub offset: u64, // offset or vaddr TODO should probably use an enum or different structs
     pub dynamic: bool,
-    pub symbol_index: u32,
+    pub symbol: u32,
     pub rtype: RelocationX86_64,
     pub addend: Option<i64>,
 }
@@ -310,7 +310,7 @@ impl Relocation {
         if reader.sixty_four_bit {
             Ok(Relocation {
                 offset,
-                symbol_index: (info >> 32) as u32,
+                symbol: (info >> 32) as u32,
                 rtype: RelocationX86_64::from_u64(info & 0xffffffff)?,
                 addend,
                 dynamic,
@@ -318,7 +318,7 @@ impl Relocation {
         } else {
             Ok(Relocation {
                 offset,
-                symbol_index: (info >> 8) as u32,
+                symbol: (info >> 8) as u32,
                 rtype: RelocationX86_64::from_u64(info & 0xff)?,
                 addend,
                 dynamic,
