@@ -49,7 +49,7 @@ impl ElfFile {
         self.loads.iter().find(|s| s.vbytes.contains(vaddr))
     }
 
-    pub fn find_vaddr(&self, offset: ElfOffset) -> Option<(&LoadSegment, VirtualAddr)> {
+    pub fn to_vaddr(&self, offset: ElfOffset) -> Option<(&LoadSegment, VirtualAddr)> {
         self.loads
             .iter()
             .find(|s| s.obytes.contains(offset))

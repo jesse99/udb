@@ -117,7 +117,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         let mut found_addr = false;
         while offset.0 as usize + bytes.len() < file.reader.len() {
             if match_bytes(&file.reader, offset.0 as usize, bytes) {
-                match file.find_vaddr(offset) {
+                match file.to_vaddr(offset) {
                     Some((load, addr)) => {
                         if !found_addr {
                             println!("{prefix}Addresses:");
