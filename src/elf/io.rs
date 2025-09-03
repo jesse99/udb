@@ -47,7 +47,7 @@ impl Reader {
 
     pub fn slice(&self, offset: Offset, size: usize) -> Result<&[u8], Box<dyn Error>> {
         let offset = offset.0 as usize;
-        if offset as usize + size > self.bytes.len() {
+        if offset + size > self.bytes.len() {
             return Err("slice out of bounds".into());
         }
         Ok(&self.bytes[offset..offset + size])

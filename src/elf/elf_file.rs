@@ -443,7 +443,7 @@ impl ElfFile {
 
     fn load_loads(reader: &Reader, header: &ElfHeader) -> Vec<LoadSegment> {
         let mut loads = Vec::new();
-        let mut offset = Offset(header.ph_offset as u64);
+        let mut offset = Offset(header.ph_offset);
 
         // Even a large core file has a small number of program headers, so it's OK to
         // re-iterate over them.
@@ -485,7 +485,7 @@ impl ElfFile {
         }
 
         let mut notes = Vec::new();
-        let mut offset = Offset(header.ph_offset as u64);
+        let mut offset = Offset(header.ph_offset);
 
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
@@ -516,7 +516,7 @@ impl ElfFile {
 
     // This is just here so we can report unknown segments.
     fn load_others(reader: &Reader, header: &ElfHeader) {
-        let mut offset = Offset(header.ph_offset as u64);
+        let mut offset = Offset(header.ph_offset);
 
         for _ in 0..header.num_ph_entries {
             match ProgramHeader::new(reader, offset) {
@@ -539,7 +539,7 @@ impl ElfFile {
 
     fn load_sections(reader: &Reader, header: &ElfHeader) -> Vec<SectionHeader> {
         let mut sections = Vec::new();
-        let mut offset = Offset(header.section_offset as u64);
+        let mut offset = Offset(header.section_offset);
 
         for _ in 0..header.num_section_entries {
             match SectionHeader::new(reader, offset) {

@@ -101,7 +101,7 @@ impl LoadSegment {
     pub fn to_offset(&self, vaddr: VirtualAddr) -> Option<Offset> {
         if self.vbytes.contains(vaddr) {
             let delta = vaddr.0 - self.vbytes.start.0;
-            Some(Offset(self.obytes.start.0 + (delta as u64)))
+            Some(Offset(self.obytes.start.0 + delta))
         } else {
             None
         }
