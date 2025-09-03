@@ -1,7 +1,7 @@
 //! Used by the linker and debugger. Also see segments.
 use super::{Reader, Stream};
 use crate::{
-    elf::{Bytes, ElfOffset, SectionIndex, StringIndex, VirtualAddr},
+    elf::{Bytes, Offset, SectionIndex, StringIndex, VirtualAddr},
     utils,
 };
 use std::error::Error;
@@ -34,7 +34,7 @@ pub struct SectionHeader {
     pub flags: u64,
 
     /// Addressing for the bytes in the segment using offsets from the start of the ELF file.
-    pub obytes: Bytes<ElfOffset>,
+    pub obytes: Bytes<Offset>,
 
     /// Addressing for the bytes in the segment using virtual addresses as in the cored process.
     pub vbytes: Bytes<VirtualAddr>,
@@ -207,7 +207,7 @@ impl SectionHeader {
                 name: StringIndex(name),
                 stype,
                 flags,
-                obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
+                obytes: Bytes::<Offset>::from_raw(offset, size as usize),
                 vbytes: Bytes::<VirtualAddr>::from_raw(vaddr, size as usize),
                 link: SectionIndex(link),
                 info,
@@ -229,7 +229,7 @@ impl SectionHeader {
                 name: StringIndex(name),
                 stype,
                 flags,
-                obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
+                obytes: Bytes::<Offset>::from_raw(offset, size as usize),
                 vbytes: Bytes::<VirtualAddr>::from_raw(vaddr, size as usize),
                 link: SectionIndex(link),
                 info,

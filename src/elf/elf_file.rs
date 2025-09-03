@@ -5,7 +5,7 @@ use super::{
 };
 use crate::debug::{SymbolTable, SymbolTableEntry};
 use crate::elf::{
-    Bytes, ChildSignal, CoreNoteType, ElfOffset, FaultSignal, KillSignal, Note, PosixSignal,
+    Bytes, ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, Offset, PosixSignal,
     Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, StringIndex, VirtualAddr,
 };
 use crate::utils::{self, warn};
@@ -49,7 +49,7 @@ impl ElfFile {
         self.loads.iter().find(|s| s.vbytes.contains(vaddr))
     }
 
-    pub fn to_vaddr(&self, offset: ElfOffset) -> Option<(&LoadSegment, VirtualAddr)> {
+    pub fn to_vaddr(&self, offset: Offset) -> Option<(&LoadSegment, VirtualAddr)> {
         self.loads
             .iter()
             .find(|s| s.obytes.contains(offset))
@@ -449,7 +449,7 @@ impl ElfFile {
             match ProgramHeader::new(reader, offset) {
                 Ok(ph) => {
                     if ph.stype == SegmentType::Load {
-                        let obytes = Bytes::<ElfOffset>::from_raw(ph.offset, ph.mem_size as usize);
+                        let obytes = Bytes::<Offset>::from_raw(ph.offset, ph.mem_size as usize);
                         let vbytes = Bytes::<VirtualAddr>::from_raw(ph.vaddr, ph.mem_size as usize);
                         loads.push(LoadSegment {
                             obytes,

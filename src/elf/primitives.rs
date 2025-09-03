@@ -10,7 +10,7 @@ pub struct StringIndex(pub u32);
 
 /// An index into a byte within an ELF file.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct ElfOffset(pub u64);
+pub struct Offset(pub u64);
 
 /// The address of a byte in the process that cored. These are normally associated with
 /// one of the load segments in the core file.
@@ -29,10 +29,10 @@ where
     pub size: usize,
 }
 
-impl Bytes<ElfOffset> {
+impl Bytes<Offset> {
     pub fn from_raw(start: u64, size: usize) -> Self {
         Bytes {
-            start: ElfOffset::from_raw(start),
+            start: Offset::from_raw(start),
             size,
         }
     }
@@ -57,10 +57,10 @@ impl<A: Add<i64, Output = A> + Copy + Ord> Bytes<A> {
     }
 }
 
-impl Sub<ElfOffset> for ElfOffset {
+impl Sub<Offset> for Offset {
     type Output = i64;
 
-    fn sub(self, rhs: ElfOffset) -> Self::Output {
+    fn sub(self, rhs: Offset) -> Self::Output {
         (self.0 as i64) - (rhs.0 as i64)
     }
 }
@@ -71,9 +71,9 @@ impl VirtualAddr {
     }
 }
 
-impl ElfOffset {
+impl Offset {
     pub fn from_raw(addr: u64) -> Self {
-        ElfOffset(addr)
+        Offset(addr)
     }
 }
 
@@ -89,14 +89,14 @@ impl Add<i64> for VirtualAddr {
     }
 }
 
-impl Add<i64> for ElfOffset {
-    type Output = ElfOffset;
+impl Add<i64> for Offset {
+    type Output = Offset;
 
     fn add(self, rhs: i64) -> Self::Output {
         if rhs < 0 {
-            ElfOffset(self.0 - (-rhs) as u64)
+            Offset(self.0 - (-rhs) as u64)
         } else {
-            ElfOffset(self.0 + rhs as u64)
+            Offset(self.0 + rhs as u64)
         }
     }
 }

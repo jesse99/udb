@@ -1,4 +1,4 @@
-use crate::elf::{ElfFile, ElfOffset, LoadSegment, VirtualAddr};
+use crate::elf::{ElfFile, Offset, LoadSegment, VirtualAddr};
 use crate::repl::HexdumpLabels;
 use crate::{
     elf::{ElfFiles, Reader},
@@ -111,7 +111,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
 
     fn search_all(prefix: &str, file: &ElfFile, args: &FindArgs, bytes: &[u8]) {
         let mut count = 0;
-        let mut offset = ElfOffset::from_raw(0);
+        let mut offset = Offset::from_raw(0);
         let mut offsets = Vec::new(); // we'll print addresses first
 
         let mut found_addr = false;

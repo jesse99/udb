@@ -1,7 +1,7 @@
 //! Used by the run-time loader. Also see sections.
 use super::{Reader, Stream};
 use crate::{
-    elf::{Bytes, ElfOffset, VirtualAddr},
+    elf::{Bytes, Offset, VirtualAddr},
     utils,
 };
 use std::error::Error;
@@ -86,7 +86,7 @@ impl SegmentType {
 
 pub struct LoadSegment {
     /// Addressing for the bytes in the segment using offsets from the start of the ELF file.
-    pub obytes: Bytes<ElfOffset>,
+    pub obytes: Bytes<Offset>,
 
     /// Addressing for the bytes in the segment using virtual addresses as in the cored process.
     pub vbytes: Bytes<VirtualAddr>,
@@ -98,10 +98,10 @@ pub struct LoadSegment {
 }
 
 impl LoadSegment {
-    pub fn to_offset(&self, vaddr: VirtualAddr) -> Option<ElfOffset> {
+    pub fn to_offset(&self, vaddr: VirtualAddr) -> Option<Offset> {
         if self.vbytes.contains(vaddr) {
             let delta = vaddr.0 - self.vbytes.start.0;
-            Some(ElfOffset(self.obytes.start.0 + (delta as u64)))
+            Some(Offset(self.obytes.start.0 + (delta as u64)))
         } else {
             None
         }
