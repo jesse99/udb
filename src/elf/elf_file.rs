@@ -5,8 +5,8 @@ use super::{
 };
 use crate::debug::{SymbolTable, SymbolTableEntry};
 use crate::elf::{
-    ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, PosixSignal, Relocation,
-    SectionHeader, SectionType, SigInfo, SignalDetails,
+    Bytes, ChildSignal, CoreNoteType, ElfOffset, FaultSignal, KillSignal, Note, PosixSignal,
+    Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, VirtualAddr,
 };
 use crate::utils::{self, warn};
 use memmap2::Mmap;
@@ -45,17 +45,15 @@ impl ElfFile {
         })
     }
 
-    pub fn find_load_segment(&self, vaddr: u64) -> Option<&LoadSegment> {
-        self.loads
-            .iter()
-            .find(|s| s.vaddr <= vaddr && vaddr < s.vaddr + s.size)
+    pub fn find_load_segment(&self, vaddr: VirtualAddr) -> Option<&LoadSegment> {
+        self.loads.iter().find(|s| s.vbytes.contains(vaddr))
     }
 
-    pub fn find_vaddr(&self, offset: u64) -> Option<(&LoadSegment, u64)> {
+    pub fn find_vaddr(&self, offset: ElfOffset) -> Option<(&LoadSegment, VirtualAddr)> {
         self.loads
             .iter()
-            .find(|s| s.offset <= offset && offset < s.offset + s.size)
-            .map(|s| (s, s.vaddr + offset - s.offset))
+            .find(|s| s.obytes.contains(offset))
+            .map(|s| (s, s.vbytes.start + (offset - s.obytes.start)))
     }
 
     /// Returns a string from the section string table. Note that index can point into
@@ -69,7 +67,7 @@ impl ElfFile {
     pub fn find_string(&self, section_index: u32, str_index: usize) -> Option<String> {
         let h = self.find_section(section_index)?;
         // TODO really should return an error if indexing past h.offset + h.size
-        match Stream::new(&self.reader, h.offset as usize + str_index).read_string() {
+        match Stream::new(&self.reader, h.obytes.start.0 as usize + str_index).read_string() {
             Ok(s) => Some(s),
             Err(err) => {
                 utils::warn(&format!("failed to read section string {str_index}: {err}"));
@@ -81,8 +79,8 @@ impl ElfFile {
     pub fn find_strings(&self, section: &SectionHeader, max: usize) -> Vec<String> {
         let mut result = Vec::new();
         if section.stype == SectionType::StringTable {
-            let mut stream = Stream::new(&self.reader, section.offset as usize);
-            while (stream.offset as u64) < section.offset + section.size {
+            let mut stream = Stream::new(&self.reader, section.obytes.start.0 as usize);
+            while (stream.offset as u64) < section.obytes.end().0 {
                 if let Ok(s) = stream.read_string() {
                     result.push(s);
                     if result.len() == max {
@@ -153,14 +151,13 @@ impl ElfFile {
             for (start, end, _offset) in elements {
                 if let Ok(file_name) = s.read_string() {
                     if let Some(old) = files.last_mut()
-                        && start == old.end_addr
+                        && start == old.vbytes.end().0
                         && file_name == old.file_name
                     {
-                        old.end_addr = end;
+                        old.vbytes.size = (end - old.vbytes.start.0) as usize;
                     } else {
                         files.push(MemoryMappedFile {
-                            start_addr: start,
-                            end_addr: end,
+                            vbytes: Bytes::<VirtualAddr>::from_raw(start, (end - start) as usize),
                             // offset: offset * page_size,
                             file_name,
                         });
@@ -361,8 +358,8 @@ impl ElfFile {
             section: &SectionHeader,
             result: &mut Vec<Relocation>,
         ) {
-            let mut offset = section.offset;
-            while offset + section.entry_size <= section.offset + section.size {
+            let mut offset = section.obytes.start.0;
+            while offset + section.entry_size <= section.obytes.end().0 {
                 let dynamic = section.info == 0; // TODO better to look at section name?
                 if let Some(r) = load_with(reader, offset, dynamic) {
                     result.push(r)
@@ -376,8 +373,8 @@ impl ElfFile {
             section: &SectionHeader,
             result: &mut Vec<Relocation>,
         ) {
-            let mut offset = section.offset;
-            while offset + section.entry_size <= section.offset + section.size {
+            let mut offset = section.obytes.start.0;
+            while offset + section.entry_size <= section.obytes.end().0 {
                 let dynamic = section.info == 0; // TODO better to look at section name?
                 if let Some(r) = load_without(reader, offset, dynamic) {
                     result.push(r)
@@ -418,9 +415,9 @@ impl ElfFile {
         for section in self.sections.iter() {
             if section.stype == stype {
                 // TODO warn if there is more than one of these
-                let mut offset = section.offset;
+                let mut offset = section.obytes.start.0;
                 let mut entries = Vec::new();
-                while offset < section.offset + section.size {
+                while offset < section.obytes.end().0 {
                     match SymbolTableEntry::new(&self.reader, offset as usize) {
                         Ok(s) => entries.push(s),
                         Err(err) => {
@@ -450,10 +447,11 @@ impl ElfFile {
             match ProgramHeader::new(reader, offset) {
                 Ok(ph) => {
                     if ph.stype == SegmentType::Load {
+                        let obytes = Bytes::<ElfOffset>::from_raw(ph.offset, ph.mem_size as usize);
+                        let vbytes = Bytes::<VirtualAddr>::from_raw(ph.vaddr, ph.mem_size as usize);
                         loads.push(LoadSegment {
-                            offset: ph.offset,
-                            size: ph.mem_size,
-                            vaddr: ph.vaddr,
+                            obytes,
+                            vbytes,
                             // paddr: ph.paddr,
                             flags: ph.flags,
                         });

@@ -1,6 +1,9 @@
 //! Used by the run-time loader. Also see sections.
 use super::{Reader, Stream};
-use crate::utils;
+use crate::{
+    elf::{Bytes, ElfOffset, VirtualAddr},
+    utils,
+};
 use std::error::Error;
 
 const EXECUTE_FLAG: u32 = 0x1;
@@ -15,10 +18,10 @@ pub struct ProgramHeader {
     /// Offset to the first byte of the segment.
     pub offset: u64,
 
-    /// Address of the segment visible to users.
+    /// Virtual address of the first byte in the segment.
     pub vaddr: u64,
 
-    /// Address of the segment within the core file.
+    /// Physical address of the first byte in the segment.
     pub paddr: u64,
 
     /// Number of bytes in the segment in the core file.
@@ -82,14 +85,11 @@ impl SegmentType {
 }
 
 pub struct LoadSegment {
-    /// The offset into the core at which the segment starts.
-    pub offset: u64,
+    /// Addressing for the bytes in the segment using offsets from the start of the ELF file.
+    pub obytes: Bytes<ElfOffset>,
 
-    /// Number of bytes in the segment.
-    pub size: u64,
-
-    /// The virtual address the segment starts at.
-    pub vaddr: u64,
+    /// Addressing for the bytes in the segment using virtual addresses as in the cored process.
+    pub vbytes: Bytes<VirtualAddr>,
 
     // /// The physical address the segment starts at. Will be zero for core files.
     // pub paddr: u64,
@@ -98,6 +98,14 @@ pub struct LoadSegment {
 }
 
 impl LoadSegment {
+    pub fn to_offset(&self, vaddr: VirtualAddr) -> Option<ElfOffset> {
+        if self.vbytes.contains(vaddr) {
+            let delta = vaddr.0 - self.vbytes.start.0;
+            Some(ElfOffset(self.obytes.start.0 + (delta as u64)))
+        } else {
+            None
+        }
+    }
     pub fn executable(&self) -> bool {
         self.flags & EXECUTE_FLAG != 0
     }

@@ -24,6 +24,7 @@ pub mod elf_files;
 pub mod header;
 pub mod io;
 pub mod notes;
+pub mod primitives;
 pub mod sections;
 pub mod segments;
 
@@ -32,5 +33,6 @@ pub use elf_files::*;
 pub use header::*;
 pub use io::*;
 pub use notes::*;
+pub use primitives::*;
 pub use sections::*;
 pub use segments::*;

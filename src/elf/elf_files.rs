@@ -1,4 +1,4 @@
-use crate::elf::{ElfFile, LoadSegment, PrStatus, Relocation};
+use crate::elf::{ElfFile, LoadSegment, PrStatus, Relocation, VirtualAddr};
 use std::error::Error;
 
 pub struct ElfFiles {
@@ -30,7 +30,7 @@ impl ElfFiles {
         Ok(ElfFiles { core, exe })
     }
 
-    pub fn find_load_segment(&self, vaddr: u64) -> Option<&LoadSegment> {
+    pub fn find_load_segment(&self, vaddr: VirtualAddr) -> Option<&LoadSegment> {
         match &self.core {
             Some(c) => c.find_load_segment(vaddr),
             None => None,

@@ -1,7 +1,10 @@
 //! The various notes in an ELF file. For cores these provide information about the process.
 //! For exe's they provide information about how it was built. Not all may be present.
 use super::Stream;
-use crate::utils;
+use crate::{
+    elf::{Bytes, VirtualAddr},
+    utils,
+};
 use std::error::Error;
 
 pub struct Note {
@@ -279,21 +282,21 @@ impl PrStatus {
     }
 
     /// Returns the instruction address within the currently executing function.
-    pub fn get_ip(&self) -> u64 {
-        self.registers[16]
+    pub fn get_ip(&self) -> VirtualAddr {
+        VirtualAddr::from_raw(self.registers[16])
     }
 
     /// Points to after the end of locals on the stack and contains the callers stack top
     /// (rbp). Returns garbage if -fomit-frame-pointer is used or for optimized builds
     /// (when -fno-omit-frame-pointer isn't set).
-    pub fn get_frame_stack_top(&self) -> u64 {
-        self.registers[4]
+    pub fn get_frame_stack_top(&self) -> VirtualAddr {
+        VirtualAddr::from_raw(self.registers[4])
     }
 
     /// Points to the start of locals on the stack (rsp). Debug info has to be used to
     /// figure out the amount of space locals take.
-    pub fn get_frame_stack_bottom(&self) -> u64 {
-        self.registers[19]
+    pub fn get_frame_stack_bottom(&self) -> VirtualAddr {
+        VirtualAddr::from_raw(self.registers[19])
     }
 
     /// Returns true for stuff like segment registers.
@@ -344,11 +347,8 @@ impl PrStatus {
 }
 
 pub struct MemoryMappedFile {
-    /// Address of the start of the file in memory.
-    pub start_addr: u64,
-
-    /// Address of the end of the file in memory.
-    pub end_addr: u64,
+    /// Addressing for the bytes as they were loaded into memory.
+    pub vbytes: Bytes<VirtualAddr>,
 
     // /// Offset into the file used when memory mapping.
     // pub offset: u64,

@@ -1,7 +1,9 @@
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
 use crate::debug::SymbolIndex;
-use crate::elf::{LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType};
+use crate::elf::{
+    LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, VirtualAddr,
+};
 use crate::repl::{ExplainArgs, RegistersArgs, StringsArgs};
 use crate::utils;
 use crate::utils::Styling;
@@ -105,11 +107,10 @@ pub fn info_header(files: &ElfFiles, args: &ExplainArgs) {
 pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
     pub fn find_file(
         files: &Option<Vec<MemoryMappedFile>>,
-        vaddr: u64,
+        vaddr: VirtualAddr,
     ) -> Option<&MemoryMappedFile> {
         if let Some(maps) = files {
-            maps.iter()
-                .find(|m| m.start_addr <= vaddr && vaddr < m.end_addr)
+            maps.iter().find(|m| m.vbytes.contains(vaddr))
         } else {
             None
         }
@@ -118,7 +119,7 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
     pub fn is_stack(file: &ElfFile, segment: &LoadSegment) -> bool {
         if let Some(status) = file.find_prstatus() {
             let bottom = status.get_frame_stack_bottom();
-            segment.vaddr <= bottom && bottom < (segment.vaddr + segment.size)
+            segment.vbytes.contains(bottom)
         } else {
             false
         }
@@ -141,7 +142,7 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
     let files = file.find_memory_mapped_files();
     for segment in file.loads.iter() {
         let mut note = String::new();
-        if let Some(file) = find_file(&files, segment.vaddr) {
+        if let Some(file) = find_file(&files, segment.vbytes.start) {
             note.push_str(&format!("{} ", file.file_name));
         } else if is_stack(file, segment) {
             note.push_str("[stack] ");
@@ -152,10 +153,10 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
             note.push_str("[text] ");
         }
 
-        add_field!(builder, "vaddr", "{:x}", segment.vaddr);
-        add_field!(builder, "memsz", "{:x}", segment.size);
+        add_field!(builder, "vaddr", "{:x}", segment.vbytes.start.0);
+        add_field!(builder, "memsz", "{:x}", segment.vbytes.size);
         add_field!(builder, "flags", segment.flags());
-        add_field!(builder, "offset", "{:x}", segment.offset);
+        add_field!(builder, "offset", "{:x}", segment.obytes.start.0);
         add_field!(builder, "note", note);
     }
 
@@ -178,9 +179,9 @@ pub fn info_mapped(files: &ElfFiles, args: &TableArgs) {
         builder.add_col_l("file name", "path to the file");
 
         for file in files {
-            add_field!(builder, "start", "{:x}", file.start_addr);
-            add_field!(builder, "end", "{:x}", file.end_addr);
-            add_field!(builder, "size", file.end_addr - file.start_addr);
+            add_field!(builder, "start", "{:x}", file.vbytes.start.0);
+            add_field!(builder, "end", "{:x}", file.vbytes.end().0);
+            add_field!(builder, "size", file.vbytes.size);
             add_field!(builder, "file name", file.file_name);
         }
 
@@ -341,9 +342,9 @@ pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
         };
         add_field!(builder, "type", "{:?}", section.stype);
         add_field!(builder, "flags", SectionHeader::flags(section.flags));
-        add_field!(builder, "vaddr", "{:x}", section.vaddr);
-        add_field!(builder, "offset", "{:x}", section.offset);
-        add_field!(builder, "size", section.size);
+        add_field!(builder, "vaddr", "{:x}", section.vbytes.start.0);
+        add_field!(builder, "offset", "{:x}", section.obytes.start.0);
+        add_field!(builder, "size", section.vbytes.size);
         add_field!(builder, "entry_size", section.entry_size);
         add_field!(builder, "align", section.align);
         add_field!(builder, "link", section.link);

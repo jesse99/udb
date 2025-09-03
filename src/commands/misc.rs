@@ -1,4 +1,4 @@
-use crate::elf::{ElfFile, LoadSegment};
+use crate::elf::{ElfFile, ElfOffset, LoadSegment, VirtualAddr};
 use crate::repl::HexdumpLabels;
 use crate::{
     elf::{ElfFiles, Reader},
@@ -8,7 +8,7 @@ use crate::{
 use std::error::Error;
 
 /// Returns pointers to the instructions within the functions in the current call chain.
-fn raw_backtrace(files: &ElfFiles) -> Result<Vec<u64>, Box<dyn Error>> {
+fn raw_backtrace(files: &ElfFiles) -> Result<Vec<VirtualAddr>, Box<dyn Error>> {
     // TODO move this into debug module
     // see https://eli.thegreenplace.net/2011/09/06/stack-frame-layout-on-x86-64
     let mut bt = Vec::new();
@@ -22,23 +22,26 @@ fn raw_backtrace(files: &ElfFiles) -> Result<Vec<u64>, Box<dyn Error>> {
         {
             // we expect stack to be within one segment
             // TODO could do some validation here but I think we want to be fairly permissive
-            while load.vaddr <= rbp && rbp < load.vaddr + load.size {
-                let delta = rbp - load.vaddr;
-                rbp = files
-                    .core
-                    .as_ref()
-                    .unwrap() // safe because find_prstatus worked
-                    .reader
-                    .read_xword((load.offset + delta) as usize)
-                    .unwrap();
+            while let Some(offset) = load.to_offset(rbp) {
+                rbp = VirtualAddr::from_raw(
+                    files
+                        .core
+                        .as_ref()
+                        .unwrap() // safe because find_prstatus worked
+                        .reader
+                        .read_xword(offset.0 as usize)
+                        .unwrap(),
+                );
 
-                let addr = files
-                    .core
-                    .as_ref()
-                    .unwrap()
-                    .reader
-                    .read_xword((load.offset + delta + 8) as usize)
-                    .unwrap();
+                let addr = VirtualAddr::from_raw(
+                    files
+                        .core
+                        .as_ref()
+                        .unwrap()
+                        .reader
+                        .read_xword((offset.0 + 8) as usize)
+                        .unwrap(),
+                );
                 bt.push(addr);
             }
         } else {
@@ -52,7 +55,7 @@ fn raw_backtrace(files: &ElfFiles) -> Result<Vec<u64>, Box<dyn Error>> {
 
 pub fn backtrace(files: &ElfFiles) {
     match raw_backtrace(files) {
-        Ok(bt) => bt.iter().for_each(|a| println!("{a:x}")),
+        Ok(bt) => bt.iter().for_each(|a| println!("{:x}", a.0)),
         Err(e) => println!("{e}"),
     }
 }
@@ -76,14 +79,14 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         let mut count = 0;
         for load in core.loads.iter() {
             let mut i = 0;
-            while i + bytes.len() < load.size as usize {
-                if match_bytes(&core.reader, i + load.offset as usize, bytes) {
-                    println!("0x{:x}", i + load.vaddr as usize);
+            while i + bytes.len() < load.vbytes.size {
+                if match_bytes(&core.reader, i + load.obytes.start.0 as usize, bytes) {
+                    println!("0x{:x}", i + load.vbytes.start.0 as usize);
                     if args.count > 0 {
                         hexdump_segment(
                             core,
                             &HexdumpArgs {
-                                value: i as u64 + load.vaddr,
+                                value: i as u64 + load.vbytes.start.0,
                                 offset: false,
                                 count: args.count,
                                 labels: HexdumpLabels::None,
@@ -108,26 +111,26 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
 
     fn search_all(prefix: &str, file: &ElfFile, args: &FindArgs, bytes: &[u8]) {
         let mut count = 0;
-        let mut offset = 0;
+        let mut offset = ElfOffset::from_raw(0);
         let mut offsets = Vec::new(); // we'll print addresses first
 
         let mut found_addr = false;
-        while offset + bytes.len() < file.reader.len() {
-            if match_bytes(&file.reader, offset, bytes) {
-                match file.find_vaddr(offset as u64) {
+        while offset.0 as usize + bytes.len() < file.reader.len() {
+            if match_bytes(&file.reader, offset.0 as usize, bytes) {
+                match file.find_vaddr(offset) {
                     Some((load, addr)) => {
                         if !found_addr {
                             println!("{prefix}Addresses:");
                             found_addr = true;
                         }
-                        println!("   0x{:x}", addr);
+                        println!("   0x{:x}", addr.0);
 
                         if args.count > 0 {
                             print!("   ");
                             hexdump_segment(
                                 file,
                                 &HexdumpArgs {
-                                    value: addr,
+                                    value: addr.0,
                                     offset: false,
                                     exe: false,
                                     count: args.count,
@@ -140,26 +143,26 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
                     }
                     None => offsets.push(offset),
                 }
-                offset += bytes.len();
+                offset = offset + bytes.len() as i64;
                 count += 1;
                 if count == args.max_results {
                     println!("...");
                     return;
                 }
             } else {
-                offset += 1;
+                offset = offset + 1;
             }
         }
 
         if !offsets.is_empty() {
             println!("{prefix}Offsets:");
             for offset in offsets.iter() {
-                println!("   0x{:x}", offset);
+                println!("   0x{:x}", offset.0);
 
                 if args.count > 0 {
                     print!("   ");
                     file.reader
-                        .hex_dump(0, *offset, args.count, HexdumpLabels::None);
+                        .hex_dump(0, offset.0 as usize, args.count, HexdumpLabels::None);
                     println!();
                 }
             }
@@ -214,25 +217,28 @@ pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
                 None => hexdump_any(files.exe.as_ref().unwrap(), args.value as usize, args.count),
             }
         }
-    } else if args.exe {
-        match &files.exe {
-            Some(file) => match file.find_load_segment(args.value) {
-                Some(load) => hexdump_segment(file, args, load),
-                None => utils::warn("--couldn't find a load segment for the address"),
-            },
-            None => utils::warn("--exe was used but there is no exe"),
-        }
     } else {
-        match &files.core {
-            Some(file) => match file.find_load_segment(args.value) {
-                Some(load) => hexdump_segment(file, args, load),
-                None => utils::warn("couldn't find a load segment for the address"),
-            },
-            None => {
-                let file = files.exe.as_ref().unwrap();
-                match file.find_load_segment(args.value) {
+        let vaddr = VirtualAddr::from_raw(args.value);
+        if args.exe {
+            match &files.exe {
+                Some(file) => match file.find_load_segment(vaddr) {
+                    Some(load) => hexdump_segment(file, args, load),
+                    None => utils::warn("--couldn't find a load segment for the address"),
+                },
+                None => utils::warn("--exe was used but there is no exe"),
+            }
+        } else {
+            match &files.core {
+                Some(file) => match file.find_load_segment(vaddr) {
                     Some(load) => hexdump_segment(file, args, load),
                     None => utils::warn("couldn't find a load segment for the address"),
+                },
+                None => {
+                    let file = files.exe.as_ref().unwrap();
+                    match file.find_load_segment(vaddr) {
+                        Some(load) => hexdump_segment(file, args, load),
+                        None => utils::warn("couldn't find a load segment for the address"),
+                    }
                 }
             }
         }
@@ -240,10 +246,11 @@ pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
 }
 
 pub fn hexdump_segment(file: &ElfFile, args: &HexdumpArgs, load: &LoadSegment) {
-    let delta = args.value - load.vaddr;
-    let offset = load.offset + delta; // all zeros
-    file.reader
-        .hex_dump(args.value, offset as usize, args.count, args.labels);
+    let vaddr = VirtualAddr::from_raw(args.value);
+    if let Some(offset) = load.to_offset(vaddr) {
+        file.reader
+            .hex_dump(args.value, offset.0 as usize, args.count, args.labels);
+    }
 }
 
 pub fn hexdump_any(file: &ElfFile, offset: usize, count: usize) {

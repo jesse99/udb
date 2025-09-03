@@ -1,6 +1,9 @@
 //! Used by the linker and debugger. Also see segments.
 use super::{Reader, Stream};
-use crate::utils;
+use crate::{
+    elf::{Bytes, ElfOffset, VirtualAddr},
+    utils,
+};
 use std::error::Error;
 
 const WRITE_FLAG: u64 = 1 << 0; // Writable
@@ -18,7 +21,7 @@ const MASKOS_FLAG: u64 = 0x0ff00000; // OS-specific.
 const MASKPROC_FLAG: u64 = 0xf0000000; // Processor-specific
 
 /// Describes a section.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SectionHeader {
     // Elf32_Shdr or Elf64_Shdr, see hthttps://gist.github.com/x0nu11byt3/bcb35c3de461e5fb66173071a2379779
     /// Index into the string table. Zero means no name.
@@ -30,14 +33,11 @@ pub struct SectionHeader {
     /// Write, alloc, and/or exec.
     pub flags: u64,
 
-    /// Virtual address at execution.
-    pub vaddr: u64,
+    /// Addressing for the bytes in the segment using offsets from the start of the ELF file.
+    pub obytes: Bytes<ElfOffset>,
 
-    /// Offset into the ELF file for the start of the section.
-    pub offset: u64,
-
-    /// Section size in bytes.
-    pub size: u64,
+    /// Addressing for the bytes in the segment using virtual addresses as in the cored process.
+    pub vbytes: Bytes<VirtualAddr>,
 
     /// Link to another section with related information, usually a string
     /// or symbol table.
@@ -207,9 +207,8 @@ impl SectionHeader {
                 name,
                 stype,
                 flags,
-                vaddr,
-                offset,
-                size,
+                obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
+                vbytes: Bytes::<VirtualAddr>::from_raw(vaddr, size as usize),
                 link,
                 info,
                 align,
@@ -230,9 +229,8 @@ impl SectionHeader {
                 name,
                 stype,
                 flags,
-                vaddr,
-                offset,
-                size,
+                obytes: Bytes::<ElfOffset>::from_raw(offset, size as usize),
+                vbytes: Bytes::<VirtualAddr>::from_raw(vaddr, size as usize),
                 link,
                 info,
                 align,
