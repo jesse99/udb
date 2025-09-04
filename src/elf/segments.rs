@@ -12,6 +12,7 @@ const READ_FLAG: u32 = 0x4;
 
 /// Describes a segment. Usually LoadSegment or Note will be used instead of this.
 pub struct ProgramHeader {
+    // TODO this is a rather terrible name, should we change it to SegmentHeader?
     // Elf64_Phdr or Elf32_Phdr, see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html
     pub stype: SegmentType,
 
@@ -106,6 +107,7 @@ impl LoadSegment {
             None
         }
     }
+
     pub fn executable(&self) -> bool {
         self.flags & EXECUTE_FLAG != 0
     }

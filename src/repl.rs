@@ -170,7 +170,7 @@ pub struct HexdumpArgs {
     pub value: u64,
 }
 
-#[derive(Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy, Eq, PartialEq, ValueEnum)]
 pub enum HexdumpLabels {
     /// Show nothing at the start of lines
     None,

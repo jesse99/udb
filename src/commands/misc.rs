@@ -209,13 +209,18 @@ pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
     if args.offset {
         if args.exe {
             match &files.exe {
-                Some(file) => hexdump_any(file, Offset(args.value), args.count),
+                Some(file) => hexdump_any(file, Offset(args.value), args.count, args.labels),
                 None => utils::warn("--exe was used but there is no exe"),
             }
         } else {
             match &files.core {
-                Some(file) => hexdump_any(file, Offset(args.value), args.count),
-                None => hexdump_any(files.exe.as_ref().unwrap(), Offset(args.value), args.count),
+                Some(file) => hexdump_any(file, Offset(args.value), args.count, args.labels),
+                None => hexdump_any(
+                    files.exe.as_ref().unwrap(),
+                    Offset(args.value),
+                    args.count,
+                    args.labels,
+                ),
             }
         }
     } else {
@@ -254,8 +259,12 @@ pub fn hexdump_segment(file: &ElfFile, args: &HexdumpArgs, load: &LoadSegment) {
     }
 }
 
-pub fn hexdump_any(file: &ElfFile, offset: Offset, count: usize) {
-    file.reader.hex_dump(0, offset, count, HexdumpLabels::Zero);
+pub fn hexdump_any(file: &ElfFile, offset: Offset, count: usize, labels: HexdumpLabels) {
+    if labels == HexdumpLabels::Addr {
+        utils::warn("Can't use --labels=address when dumping by offset");
+    } else {
+        file.reader.hex_dump(0, offset, count, labels);
+    }
 }
 
 fn ascii_str_to_vec(str: &str) -> Vec<u8> {
