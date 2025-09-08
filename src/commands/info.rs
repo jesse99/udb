@@ -5,7 +5,7 @@ use crate::elf::{
     LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, StringIndex,
     VirtualAddr,
 };
-use crate::repl::{ExplainArgs, RegistersArgs, StringsArgs};
+use crate::repl::{DebugArgs, ExplainArgs, RegistersArgs, StringsArgs};
 use crate::utils;
 use crate::utils::Styling;
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
@@ -25,6 +25,54 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
             Some(file) => file,
             None => files.exe.as_ref().unwrap(),
         }
+    }
+}
+
+pub fn info_debug(files: &ElfFiles, _args: &DebugArgs) {
+    let file = get_file(files, true);
+    match file.find_raw_debug_line() {
+        Ok(line) => {
+            println!("length: {}", line.length);
+            println!("version: {}", line.version);
+            println!("address_size: {:?}", line.address_size);
+            println!("segment_selector_size: {:?}", line.segment_selector_size);
+            println!("header_length: {}", line.header_length);
+            println!("min_instruction_len: {}", line.min_instruction_len);
+            println!("max_ops_per_instruction: {}", line.max_ops_per_instruction);
+            println!("default_is_stmt: {}", line.default_is_stmt);
+            println!("line_base: {}", line.line_base);
+            println!("line_range: {}", line.line_range);
+            println!("opcode_base: {}", line.opcode_base);
+
+            println!("\nopcode num_args:");
+            for (opcode, size) in line.opcode_sizes.iter() {
+                println!("   {:?}: {}", opcode, size);
+            }
+
+            println!("\ninclude directories:");
+            for s in line.includes {
+                println!("   {s}");
+            }
+
+            println!("\nsource files:");
+            let mut builder = TableBuilder::new();
+            builder.add_col_l("file", "absolute or relative path to the file");
+            builder.add_col_l("dir", "used for relative files");
+            builder.add_col_r("last_mod", "implementation defined last modification date");
+            builder.add_col_r("length", "file length");
+            for file in line.files {
+                add_field!(builder, "file", file.file);
+                add_field!(builder, "dir", file.dir);
+                add_field!(builder, "last_mod", file.last_mod);
+                if let Some(len) = file.length {
+                    add_field!(builder, "length", len);
+                } else {
+                    add_field!(builder, "length", "unknown");
+                }
+            }
+            builder.println(true, false);
+        }
+        Err(err) => println!("{err}"),
     }
 }
 

@@ -53,6 +53,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Bt => commands::backtrace(&files),
         Find(args) => commands::find(&files, &args),
         Info(info) => match info.action {
+            InfoAction::Debug(args) => commands::info_debug(&files, &args),
             InfoAction::Header(args) => commands::info_header(&files, &args),
             InfoAction::Loads(args) => commands::info_loads(&files, &args),
             InfoAction::Mapped(args) => commands::info_mapped(&files, &args),

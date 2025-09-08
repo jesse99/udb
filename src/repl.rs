@@ -37,6 +37,9 @@ pub struct InfoCommand {
 
 #[derive(Subcommand)]
 pub enum InfoAction {
+    /// Show debug info
+    Debug(DebugArgs),
+
     /// Show ELF header
     Header(ExplainArgs),
 
@@ -109,6 +112,13 @@ pub struct FindArgs {
     /// Max number of results to report, 0 for unlimited
     #[arg(short, long, default_value_t = 10, requires = "filter")]
     pub max_results: usize,
+}
+
+#[derive(Args)]
+pub struct DebugArgs {
+    /// Show the unprocessed data.
+    #[arg(short, long)]
+    pub raw: bool,
 }
 
 #[derive(Args)]

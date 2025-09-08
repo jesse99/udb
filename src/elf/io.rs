@@ -30,8 +30,8 @@ impl Reader {
         let e_type = *bytes.get(0x10).unwrap();
         utils::require(ei_version == 1, &format!("bad elf version: {ei_version}"))?;
         utils::require(
-            e_type == 0x02 || e_type == 0x03 || e_type == 0x04,
-            "bad elf type: not a core, exe, or shared lib",
+            e_type == 0x01 || e_type == 0x02 || e_type == 0x03 || e_type == 0x04,
+            "bad elf type: not a core, exe, shared lib, or relocatable file",
         )?;
 
         Ok(Reader {
@@ -58,6 +58,13 @@ impl Reader {
             .get(offset.0 as usize)
             .ok_or("couldn't read byte at offset".into())
             .copied()
+    }
+
+    pub fn read_sbyte(&self, offset: Offset) -> Result<i8, Box<dyn Error>> {
+        self.bytes
+            .get(offset.0 as usize)
+            .ok_or("couldn't read byte at offset".into())
+            .map(|&b| b as i8)
     }
 
     pub fn read_half(&self, offset: Offset) -> Result<u16, Box<dyn Error>> {
@@ -182,6 +189,12 @@ impl<'a> Stream<'a> {
 
     pub fn read_byte(&mut self) -> Result<u8, Box<dyn Error>> {
         let byte = self.reader.read_byte(self.offset)?;
+        self.offset = self.offset + 1;
+        Ok(byte)
+    }
+
+    pub fn read_sbyte(&mut self) -> Result<i8, Box<dyn Error>> {
+        let byte = self.reader.read_sbyte(self.offset)?;
         self.offset = self.offset + 1;
         Ok(byte)
     }
