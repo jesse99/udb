@@ -155,12 +155,43 @@ process_debug_info		 https://chromium.googlesource.com/native_client/nacl-binuti
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
 \fs36 \cf2 \kerning1\expnd0\expndtw0 \CocoaLigature0 \outl0\strokewidth0 	\
+0x1500 at 5:12\
+0x150d at 6:9\
+0x1514 at 8:5\
+0x151e at 9:5\
+0x1528 at 10:5\
+0x1532 at 11:5\
+0x153c at 13:5\
+0x1546 at 14:5\
+0x1550 at 15:5\
+0x155a at 17:11\
+0x
+\f1\b 155c at 18:17   
+\f0\b0 example of a relatively complex line
+\f1\b \
+
+\f0\b0 0x
+\f1\b 1568 at 18:39\
+
+\f0\b0 0x
+\f1\b 1572 at 18:37\
+
+\f0\b0 0x
+\f1\b 1575 at 18:14\
+
+\f0\b0 0x1578 at 17:17\
+0x1581 at 21:5\
+0x15aa at 22:12\
+0x15af at 23:1\
+0x15b5 at 23:1\
 \pard\pardeftab720\partightenfactor0
 
 \f1\b \
+add a StringView type\
+	need to make ElfFile(s) or the memmap a static ref\
+	then StringView can have a static ref to that along with an offset\
+	maybe length too\
 work on debg_lines parsing\
-	get the raw data parsing\
-	maybe name the struct BlahRaw\
 	add a command to dump line info\
 		probably want a --raw option\
 	use a state machine to get something more useful\

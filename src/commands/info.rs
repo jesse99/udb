@@ -1,6 +1,6 @@
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
-use crate::debug::{LineInfo, SymbolIndex};
+use crate::debug::{LineInfo, StateMachine, SymbolIndex};
 use crate::elf::{
     LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, StringIndex,
     VirtualAddr,
@@ -82,6 +82,9 @@ pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
             for line in lines.infos.iter() {
                 print_info(line, args);
                 println!();
+
+                let mut sm = StateMachine::new(line);
+                sm.run(line);
             }
         }
         Err(err) => println!("{err}"),
