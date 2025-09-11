@@ -49,7 +49,7 @@ pub struct ElfHeader {
 }
 
 impl ElfHeader {
-    pub fn new(reader: &Reader) -> Result<Self, Box<dyn Error>> {
+    pub fn new(reader: &'static Reader) -> Result<Self, Box<dyn Error>> {
         const EI_NIDENT: usize = 16;
 
         let mut s = Stream::new(reader, Offset(EI_NIDENT as u64));

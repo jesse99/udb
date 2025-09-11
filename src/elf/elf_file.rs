@@ -16,7 +16,7 @@ use std::fs::File;
 pub struct ElfFile {
     pub header: ElfHeader,
     pub path: std::path::PathBuf,
-    pub reader: Reader,
+    pub reader: &'static Reader,
     pub loads: Vec<LoadSegment>,
     pub notes: Vec<Note>,
     pub sections: Vec<SectionHeader>, // not used for core files
@@ -29,12 +29,17 @@ impl ElfFile {
         // This is unfafe because it has undefined behavior if the underlying file is
         // modified while the memory map is in use.
         let bytes = unsafe { Mmap::map(&file) }?;
-        let reader = Reader::new(bytes)?;
-        let header = ElfHeader::new(&reader)?;
-        let loads = ElfFile::load_loads(&reader, &header);
-        let notes = ElfFile::load_notes(&reader, &header);
-        let sections = ElfFile::load_sections(&reader, &header);
-        ElfFile::load_others(&reader, &header);
+
+        // Readers will always persist for the entire life of udb so it's OK to leak them.
+        // And because we leak them we can use stuff like StringView containing a static
+        // reference to a Reader allowing us to not allocate memory for strings until we
+        // actually need it.
+        let reader = Box::leak(Box::new(Reader::new(bytes)?));
+        let header = ElfHeader::new(reader)?;
+        let loads = ElfFile::load_loads(reader, &header);
+        let notes = ElfFile::load_notes(reader, &header);
+        let sections = ElfFile::load_sections(reader, &header);
+        ElfFile::load_others(reader, &header);
         Ok(ElfFile {
             path,
             reader,
@@ -69,7 +74,7 @@ impl ElfFile {
         let h = self.find_section(section)?;
         // TODO really should return an error if indexing past h.offset + h.size
         let offset = h.obytes.start + index.0 as i64;
-        match Stream::new(&self.reader, offset).read_string() {
+        match Stream::new(self.reader, offset).read_string() {
             Ok(s) => Some(s),
             Err(err) => {
                 utils::warn(&format!("failed to read section string {index:?}: {err}"));
@@ -81,7 +86,7 @@ impl ElfFile {
     pub fn find_strings(&self, section: &SectionHeader, max: usize) -> Vec<String> {
         let mut result = Vec::new();
         if section.stype == SectionType::StringTable {
-            let mut stream = Stream::new(&self.reader, section.obytes.start);
+            let mut stream = Stream::new(self.reader, section.obytes.start);
             while stream.offset < section.obytes.end() {
                 if let Ok(s) = stream.read_string() {
                     result.push(s);
@@ -108,7 +113,7 @@ impl ElfFile {
                 {
                     let max_offset = section.obytes.end();
                     return LineInfos::new(
-                        &mut Stream::new(&self.reader, section.obytes.start),
+                        &mut Stream::new(self.reader, section.obytes.start),
                         max_offset,
                     );
                 }
@@ -125,7 +130,7 @@ impl ElfFile {
         self.do_find_symbols(SectionType::DynamicSymbolTable)
     }
 
-    pub fn find_segments(reader: &Reader, header: &ElfHeader) -> Vec<ProgramHeader> {
+    pub fn find_segments(reader: &'static Reader, header: &ElfHeader) -> Vec<ProgramHeader> {
         let mut segments = Vec::new();
         let mut offset = Offset(header.ph_offset);
 
@@ -196,7 +201,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::File) {
-            let mut s = Stream::new(&self.reader, note.contents.start);
+            let mut s = Stream::new(self.reader, note.contents.start);
             match get_memory_mapped_files(&mut s) {
                 Ok(files) => Some(files),
                 Err(e) => {
@@ -265,7 +270,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::PrStatus) {
-            let mut s = Stream::new(&self.reader, note.contents.start);
+            let mut s = Stream::new(self.reader, note.contents.start);
             match get_prstatus(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {
@@ -341,7 +346,7 @@ impl ElfFile {
         }
 
         if let Some(note) = self.find_core_note(CoreNoteType::SigInfo) {
-            let mut s = Stream::new(&self.reader, note.contents.start);
+            let mut s = Stream::new(self.reader, note.contents.start);
             match get_signal_info(&mut s) {
                 Ok(status) => Some(status),
                 Err(e) => {
@@ -355,7 +360,7 @@ impl ElfFile {
     }
 
     pub fn find_relocations(&self, result: &mut Vec<Relocation>) {
-        fn load_with(reader: &Reader, offset: Offset, dynamic: bool) -> Option<Relocation> {
+        fn load_with(reader: &'static Reader, offset: Offset, dynamic: bool) -> Option<Relocation> {
             match Relocation::with_addend(reader, offset, dynamic) {
                 Ok(r) => Some(r),
                 Err(err) => {
@@ -365,7 +370,11 @@ impl ElfFile {
             }
         }
 
-        fn load_without(reader: &Reader, offset: Offset, dynamic: bool) -> Option<Relocation> {
+        fn load_without(
+            reader: &'static Reader,
+            offset: Offset,
+            dynamic: bool,
+        ) -> Option<Relocation> {
             match Relocation::with_no_addend(reader, offset, dynamic) {
                 Ok(r) => Some(r),
                 Err(err) => {
@@ -376,7 +385,7 @@ impl ElfFile {
         }
 
         fn load_relocations_with(
-            reader: &Reader,
+            reader: &'static Reader,
             section: &SectionHeader,
             result: &mut Vec<Relocation>,
         ) {
@@ -391,7 +400,7 @@ impl ElfFile {
         }
 
         fn load_relocations_without(
-            reader: &Reader,
+            reader: &'static Reader,
             section: &SectionHeader,
             result: &mut Vec<Relocation>,
         ) {
@@ -411,11 +420,9 @@ impl ElfFile {
         }
         for section in self.sections.iter() {
             match section.stype {
-                SectionType::RelocationsWith => {
-                    load_relocations_with(&self.reader, section, result)
-                }
+                SectionType::RelocationsWith => load_relocations_with(self.reader, section, result),
                 SectionType::RelocationsWithout => {
-                    load_relocations_without(&self.reader, section, result)
+                    load_relocations_without(self.reader, section, result)
                 }
                 _ => (),
             }
@@ -440,7 +447,7 @@ impl ElfFile {
                 let mut offset = section.obytes.start;
                 let mut entries = Vec::new();
                 while offset < section.obytes.end() {
-                    match SymbolTableEntry::new(&self.reader, offset) {
+                    match SymbolTableEntry::new(self.reader, offset) {
                         Ok(s) => entries.push(s),
                         Err(err) => warn(&format!(
                             "failed to read symbols at offset {offset:?}: {err}"
@@ -459,7 +466,7 @@ impl ElfFile {
         None
     }
 
-    fn load_loads(reader: &Reader, header: &ElfHeader) -> Vec<LoadSegment> {
+    fn load_loads(reader: &'static Reader, header: &ElfHeader) -> Vec<LoadSegment> {
         let mut loads = Vec::new();
         let mut offset = Offset(header.ph_offset);
 
@@ -488,7 +495,7 @@ impl ElfFile {
         loads
     }
 
-    fn load_notes(reader: &Reader, header: &ElfHeader) -> Vec<Note> {
+    fn load_notes(reader: &'static Reader, header: &ElfHeader) -> Vec<Note> {
         fn load_note(s: &mut Stream) -> Option<Note> {
             if let Ok((name, ntype, contents)) = super::read_note(s) {
                 Some(Note {
@@ -533,7 +540,7 @@ impl ElfFile {
     }
 
     // This is just here so we can report unknown segments.
-    fn load_others(reader: &Reader, header: &ElfHeader) {
+    fn load_others(reader: &'static Reader, header: &ElfHeader) {
         let mut offset = Offset(header.ph_offset);
 
         for _ in 0..header.num_ph_entries {
@@ -555,7 +562,7 @@ impl ElfFile {
         }
     }
 
-    fn load_sections(reader: &Reader, header: &ElfHeader) -> Vec<SectionHeader> {
+    fn load_sections(reader: &'static Reader, header: &ElfHeader) -> Vec<SectionHeader> {
         let mut sections = Vec::new();
         let mut offset = Offset(header.section_offset);
 

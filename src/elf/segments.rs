@@ -126,7 +126,7 @@ impl LoadSegment {
 }
 
 impl ProgramHeader {
-    pub fn new(reader: &Reader, offset: Offset) -> Result<Self, Box<dyn Error>> {
+    pub fn new(reader: &'static Reader, offset: Offset) -> Result<Self, Box<dyn Error>> {
         // Field sizes and order differ between 32-bit and 64-bit ELF files,
         // see https://llvm.org/doxygen/BinaryFormat_2ELF_8h_source.html.
         let mut s = Stream::new(reader, offset);

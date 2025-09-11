@@ -177,13 +177,13 @@ impl Reader {
     }
 }
 
-pub struct Stream<'a> {
-    pub reader: &'a Reader,
+pub struct Stream {
+    pub reader: &'static Reader,
     pub offset: Offset,
 }
 
-impl<'a> Stream<'a> {
-    pub fn new(reader: &'a Reader, offset: Offset) -> Self {
+impl Stream {
+    pub fn new(reader: &'static Reader, offset: Offset) -> Self {
         Stream { reader, offset }
     }
 
