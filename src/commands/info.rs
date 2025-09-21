@@ -1,6 +1,6 @@
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
-use crate::debug::{LineInfo, StateMachine, SymbolIndex};
+use crate::debug::SymbolIndex;
 use crate::elf::{
     LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, StringIndex,
     VirtualAddr,
@@ -28,66 +28,40 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
     }
 }
 
+// TODO review DebugArgs, maybe cpmmand should be `info debug_lines`?
 pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
-    fn print_info(line: &LineInfo, _args: &DebugArgs) {
-        println!("length: {}", line.length);
-        println!("version: {}", line.version);
-        println!("address_size: {:?}", line.address_size);
-        println!("segment_selector_size: {:?}", line.segment_selector_size);
-        println!("header_length: {}", line.header_length);
-        println!("min_instruction_len: {}", line.min_instruction_len);
-        println!("max_ops_per_instruction: {}", line.max_ops_per_instruction);
-        println!("default_is_stmt: {}", line.default_is_stmt);
-        println!("line_base: {}", line.line_base);
-        println!("line_range: {}", line.line_range);
-        println!("opcode_base: {}", line.opcode_base);
-
-        println!("\nopcode num_args:");
-        for (opcode, size) in line.opcode_sizes.iter() {
-            println!("   {:?}: {}", opcode, size);
-        }
-
-        println!("\ninclude directories:");
-        for s in line.includes.iter() {
-            println!("   {s}");
-        }
-
-        println!("\nsource files:");
-        let mut builder = TableBuilder::new();
-        builder.add_col_l("file", "absolute or relative path to the file");
-        builder.add_col_l("dir", "used for relative files");
-        builder.add_col_r("last_mod", "implementation defined last modification date");
-        builder.add_col_r("length", "file length");
-        for file in line.files.iter() {
-            add_field!(builder, "file", file.file);
-            add_field!(builder, "dir", file.dir);
-            add_field!(builder, "last_mod", file.last_mod);
-            if let Some(len) = file.length {
-                add_field!(builder, "length", len);
-            } else {
-                add_field!(builder, "length", "unknown");
-            }
-        }
-        builder.println(true, false);
-
-        println!("\nopcodes:");
-        for c in line.opcodes.iter() {
-            println!("   {c:?}");
-        }
-    }
-
     let file = get_file(files, true);
-    match file.find_raw_debug_lines() {
-        Ok(lines) => {
-            for line in lines.infos.iter() {
-                print_info(line, args);
-                println!();
-
-                let mut sm = StateMachine::new(line);
-                sm.run(line);
+    match file.find_lines() {
+        Some(lines) => {
+            for (i, unit) in lines.units.iter().enumerate() {
+                println!("compilation unit {i}:");
+                println!("   sources:");
+                for source in unit.source_files.iter() {
+                    match source.length {
+                        Some(n) => println!("      {}/{} {} bytes", source.dir, source.file, n),
+                        None => println!("      {}/{}", source.dir, source.file),
+                    }
+                }
+                println!("   include paths:");
+                for i in unit.include_paths.iter() {
+                    println!("      {}", i);
+                }
+            }
+            println!("files:");
+            for f in lines.files.iter() {
+                println!("   {}", f);
+            }
+            println!("relative addresses:");
+            for (a, v) in lines.lines.iter().take(20) {
+                // TODO limit should be an option
+                let f = &lines.files.get(v.file);
+                println!("   0x{a:x}  {}:{}:{}", f, v.line, v.column);
+            }
+            if lines.lines.len() > 20 {
+                println!("   ...");
             }
         }
-        Err(err) => println!("{err}"),
+        None => println!("Couldn't find .debug_line section"),
     }
 }
 

@@ -3,7 +3,7 @@ use super::{
     ElfHeader, LoadSegment, MemoryMappedFile, NoteType, PrStatus, ProgramHeader, Reader,
     SectionIndex, SegmentType, Stream,
 };
-use crate::debug::{LineInfos, SymbolTable, SymbolTableEntry};
+use crate::debug::{LineInfo, SymbolTable, SymbolTableEntry};
 use crate::elf::{
     Bytes, ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, Offset, PosixSignal,
     Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, StringIndex, VirtualAddr,
@@ -104,7 +104,7 @@ impl ElfFile {
         self.find_default_string(h.name)
     }
 
-    pub fn find_raw_debug_lines(&self) -> Result<LineInfos, Box<dyn Error>> {
+    pub fn find_lines(&self) -> Option<LineInfo> {
         for (i, section) in self.sections.iter().enumerate() {
             if section.stype == SectionType::ProgBits {
                 let index = SectionIndex(i as u32);
@@ -112,14 +112,14 @@ impl ElfFile {
                     && name == ".debug_line"
                 {
                     let max_offset = section.obytes.end();
-                    return LineInfos::new(
+                    return Some(LineInfo::new(
                         &mut Stream::new(self.reader, section.obytes.start),
                         max_offset,
-                    );
+                    ));
                 }
             }
         }
-        Err("couldn't find .debug_line section".into())
+        None
     }
 
     pub fn find_symbols(&self) -> Option<SymbolTable> {

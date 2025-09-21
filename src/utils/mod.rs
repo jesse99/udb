@@ -1,5 +1,7 @@
+pub mod key_map;
 pub mod styles;
 
+pub use key_map::*;
 pub use styles::*;
 
 use std::error::Error;

@@ -165,32 +165,45 @@ process_debug_info		 https://chromium.googlesource.com/native_client/nacl-binuti
 0x1546 at 14:5\
 0x1550 at 15:5\
 0x155a at 17:11\
+\
 0x
 \f1\b 155c at 18:17   
 \f0\b0 example of a relatively complex line
 \f1\b \
 
-\f0\b0 0x
-\f1\b 1568 at 18:39\
-
-\f0\b0 0x
+\f0\b0                   key would be interval [0x155c, 0x1568)
+\f1\b \
+                  
+\f0\b0 value would be file index/line/col\
+0x
+\f1\b 1568 at 18:39   
+\f0\b0 \
+0x
 \f1\b 1572 at 18:37\
 
 \f0\b0 0x
 \f1\b 1575 at 18:14\
+\
 
 \f0\b0 0x1578 at 17:17\
 0x1581 at 21:5\
 0x15aa at 22:12\
 0x15af at 23:1\
 0x15b5 at 23:1\
+\
+Interavl - supposed to have very fast lookups\
+iset - red black tree, seems optimized for insertion\
 \pard\pardeftab720\partightenfactor0
 
 \f1\b \
+rename LineInfo something like LineHeader\
+add RelativeAddress type\
+\
 add a StringView type\
 	need to make ElfFile(s) or the memmap a static ref\
 	then StringView can have a static ref to that along with an offset\
 	maybe length too\
+	should we change other read_string places?\
 work on debg_lines parsing\
 	how do we expose the state machine?\
 		interval crate?\
@@ -203,6 +216,12 @@ work on debg_lines parsing\
 	dump line info should print this somehow\
 	bt should use this to provide file/line\
 		fn name too?\
+review functions that return Result\
+	can we just warn if there was an error\
+	and continue on as best we can\
+	so we don\'92t need to return a result?\
+	what about scripts? \
+		could we have some sort of command executor that returns something like stdout/stdwarn?\
 figure out how to map symbol values to virtual addresses\
 	may want an option for this\
 figure out how to get function names and lines from from bt\
