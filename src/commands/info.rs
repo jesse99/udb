@@ -394,7 +394,7 @@ pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
 
 pub fn info_segments(files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
-    let segments = ElfFile::find_segments(&file.reader, &file.header);
+    let segments = ElfFile::find_segments(file.reader, &file.header);
 
     let mut builder = TableBuilder::new();
     builder.add_col_l("type", "the segment type");

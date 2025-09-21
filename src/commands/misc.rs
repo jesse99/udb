@@ -81,7 +81,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         for load in core.loads.iter() {
             let mut i = 0;
             while i + bytes.len() < load.vbytes.size {
-                if match_bytes(&core.reader, i + load.obytes.start.0 as usize, bytes) {
+                if match_bytes(core.reader, i + load.obytes.start.0 as usize, bytes) {
                     println!("0x{:x}", i + load.vbytes.start.0 as usize);
                     if args.count > 0 {
                         hexdump_segment(
@@ -117,7 +117,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
 
         let mut found_addr = false;
         while offset.0 as usize + bytes.len() < file.reader.len() {
-            if match_bytes(&file.reader, offset.0 as usize, bytes) {
+            if match_bytes(file.reader, offset.0 as usize, bytes) {
                 match file.to_vaddr(offset) {
                     Some((load, addr)) => {
                         if !found_addr {

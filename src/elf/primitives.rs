@@ -1,7 +1,5 @@
 use std::ops::{Add, Sub};
 
-use crate::elf::Reader;
-
 /// Index into the section table.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct SectionIndex(pub u32);
@@ -31,36 +29,36 @@ where
     pub size: usize,
 }
 
-/// Points to a null-terminated string with an unspecified encoding in an ELF file. To
-/// avoid allocations we avoid trying to convert these to a String.
-#[derive(Copy, Clone)]
-pub struct StringView {
-    pub reader: &'static Reader,
-    pub offset: Offset,
-    pub len: usize,
-}
+// /// Points to a null-terminated string with an unspecified encoding in an ELF file. To
+// /// avoid allocations we avoid trying to convert these to a String.
+// #[derive(Copy, Clone)]
+// pub struct StringView {
+//     pub reader: &'static Reader,
+//     pub offset: Offset,
+//     pub len: usize,
+// }
 
-impl StringView {
-    pub fn new(
-        reader: &'static Reader,
-        offset: Offset,
-    ) -> Result<Self, Box<dyn std::error::Error>> {
-        let mut len = 0;
-        loop {
-            let byte = reader.read_byte(offset + len)?;
-            if byte == 0 {
-                break;
-            }
-            len += 1;
-        }
+// impl StringView {
+//     pub fn new(
+//         reader: &'static Reader,
+//         offset: Offset,
+//     ) -> Result<Self, Box<dyn std::error::Error>> {
+//         let mut len = 0;
+//         loop {
+//             let byte = reader.read_byte(offset + len)?;
+//             if byte == 0 {
+//                 break;
+//             }
+//             len += 1;
+//         }
 
-        Ok(StringView {
-            reader,
-            offset,
-            len: len as usize,
-        })
-    }
-}
+//         Ok(StringView {
+//             reader,
+//             offset,
+//             len: len as usize,
+//         })
+//     }
+// }
 
 impl Bytes<Offset> {
     pub fn from_raw(start: u64, size: usize) -> Self {
