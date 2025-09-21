@@ -116,9 +116,10 @@ pub struct FindArgs {
 
 #[derive(Args)]
 pub struct DebugArgs {
-    /// Show the unprocessed data.
+    /// Number of lines to print in the address => line table.
     #[arg(short, long)]
-    pub raw: bool,
+    #[arg(default_value_t = 20)]
+    pub max_lines: usize,
 }
 
 #[derive(Args)]

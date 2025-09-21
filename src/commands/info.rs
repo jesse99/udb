@@ -52,12 +52,12 @@ pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
                 println!("   {}", f);
             }
             println!("relative addresses:");
-            for (a, v) in lines.lines.iter().take(20) {
+            for (a, v) in lines.lines.iter().take(args.max_lines) {
                 // TODO limit should be an option
                 let f = &lines.files.get(v.file);
                 println!("   0x{a:x}  {}:{}:{}", f, v.line, v.column);
             }
-            if lines.lines.len() > 20 {
+            if lines.lines.len() > args.max_lines {
                 println!("   ...");
             }
         }
