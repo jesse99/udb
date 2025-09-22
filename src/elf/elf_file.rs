@@ -6,10 +6,12 @@ use super::{
 use crate::debug::{LineInfo, SymbolTable, SymbolTableEntry};
 use crate::elf::{
     Bytes, ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, Offset, PosixSignal,
-    Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, StringIndex, VirtualAddr,
+    RelativeAddr, Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, StringIndex,
+    VirtualAddr,
 };
 use crate::utils::{self, warn};
 use memmap2::Mmap;
+use std::cell::OnceCell;
 use std::error::Error;
 use std::fs::File;
 
@@ -20,6 +22,9 @@ pub struct ElfFile {
     pub loads: Vec<LoadSegment>,
     pub notes: Vec<Note>,
     pub sections: Vec<SectionHeader>, // not used for core files
+
+    memory_mapped: OnceCell<Option<Vec<MemoryMappedFile>>>,
+    lines: OnceCell<Option<LineInfo>>,
 }
 
 impl ElfFile {
@@ -47,6 +52,8 @@ impl ElfFile {
             loads,
             notes,
             sections,
+            memory_mapped: OnceCell::new(),
+            lines: OnceCell::new(),
         })
     }
 
@@ -54,11 +61,20 @@ impl ElfFile {
         self.loads.iter().find(|s| s.vbytes.contains(vaddr))
     }
 
-    pub fn to_vaddr(&self, offset: Offset) -> Option<(&LoadSegment, VirtualAddr)> {
+    pub fn offset_to_vaddr(&self, offset: Offset) -> Option<(&LoadSegment, VirtualAddr)> {
         self.loads
             .iter()
             .find(|s| s.obytes.contains(offset))
             .map(|s| (s, s.vbytes.start + (offset - s.obytes.start)))
+    }
+
+    pub fn vaddr_to_raddr(&self, addr: VirtualAddr) -> Option<RelativeAddr> {
+        let files = self.get_memory_mapped_files();
+        files.as_ref().and_then(|maps| {
+            maps.iter()
+                .find(|s| s.vbytes.contains(addr))
+                .map(|s| RelativeAddr(addr.0 - s.vbytes.start.0))
+        })
     }
 
     /// Returns a string from the section string table. Note that index can point into
@@ -104,22 +120,24 @@ impl ElfFile {
         self.find_default_string(h.name)
     }
 
-    pub fn find_lines(&self) -> Option<LineInfo> {
-        for (i, section) in self.sections.iter().enumerate() {
-            if section.stype == SectionType::ProgBits {
-                let index = SectionIndex(i as u32);
-                if let Some(name) = self.find_section_name(index)
-                    && name == ".debug_line"
-                {
-                    let max_offset = section.obytes.end();
-                    return Some(LineInfo::new(
-                        &mut Stream::new(self.reader, section.obytes.start),
-                        max_offset,
-                    ));
+    pub fn get_lines(&self) -> &Option<LineInfo> {
+        self.lines.get_or_init(|| {
+            for (i, section) in self.sections.iter().enumerate() {
+                if section.stype == SectionType::ProgBits {
+                    let index = SectionIndex(i as u32);
+                    if let Some(name) = self.find_section_name(index)
+                        && name == ".debug_line"
+                    {
+                        let max_offset = section.obytes.end();
+                        return Some(LineInfo::new(
+                            &mut Stream::new(self.reader, section.obytes.start),
+                            max_offset,
+                        ));
+                    }
                 }
             }
-        }
-        None
+            None
+        })
     }
 
     pub fn find_symbols(&self) -> Option<SymbolTable> {
@@ -152,10 +170,8 @@ impl ElfFile {
         &self.sections
     }
 
-    pub fn find_memory_mapped_files(&self) -> Option<Vec<MemoryMappedFile>> {
-        fn get_memory_mapped_files(
-            s: &mut Stream,
-        ) -> Result<Vec<MemoryMappedFile>, Box<dyn Error>> {
+    pub fn get_memory_mapped_files(&self) -> &Option<Vec<MemoryMappedFile>> {
+        fn get_files(s: &mut Stream) -> Result<Vec<MemoryMappedFile>, Box<dyn Error>> {
             // For some reason files get mapped in multiple times, e.g.
             //    7f45e7402000 7f45e7559000   1404928 /usr/lib64/libxpath.so
             //    7f45e7559000 7f45e7758000   2093056 /usr/lib64/libxpath.so
@@ -200,18 +216,20 @@ impl ElfFile {
             Ok(files)
         }
 
-        if let Some(note) = self.find_core_note(CoreNoteType::File) {
-            let mut s = Stream::new(self.reader, note.contents.start);
-            match get_memory_mapped_files(&mut s) {
-                Ok(files) => Some(files),
-                Err(e) => {
-                    utils::warn(&format!("Error reading memory mapped files: {}", e));
-                    None
+        self.memory_mapped.get_or_init(|| {
+            if let Some(note) = self.find_core_note(CoreNoteType::File) {
+                let mut s = Stream::new(self.reader, note.contents.start);
+                match get_files(&mut s) {
+                    Ok(files) => Some(files),
+                    Err(e) => {
+                        utils::warn(&format!("Error reading memory mapped files: {}", e));
+                        None
+                    }
                 }
+            } else {
+                None
             }
-        } else {
-            None
-        }
+        })
     }
 
     pub fn find_core_note(&self, ntype: CoreNoteType) -> Option<&Note> {
@@ -611,7 +629,7 @@ mod tests {
     fn debug_memory_mapped_files() {
         let path = std::path::PathBuf::from("cores/shopping-debug/app-debug.core");
         let core = ElfFile::new(path).unwrap();
-        let s = match core.find_memory_mapped_files() {
+        let s = match core.get_memory_mapped_files() {
             // start_addr and end_addr will change with each build
             // size will change if we tweak the code
             // so we won't test any of that

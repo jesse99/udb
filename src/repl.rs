@@ -43,6 +43,9 @@ pub enum InfoAction {
     /// Show ELF header
     Header(ExplainArgs),
 
+    /// Print file and line number for a virtual address
+    Line(LineArgs),
+
     /// Show ELF load segments
     Loads(TableArgs),
 
@@ -154,6 +157,13 @@ pub struct RegistersArgs {
     /// Add column headers
     #[arg(short, long)]
     pub titles: bool,
+}
+
+#[derive(Args)]
+pub struct LineArgs {
+    /// A virtual address
+    #[arg(value_parser = parse_u64_expr)]
+    pub addr: u64,
 }
 
 #[derive(Args)]

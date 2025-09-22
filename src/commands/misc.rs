@@ -55,7 +55,10 @@ fn raw_backtrace(files: &ElfFiles) -> Result<Vec<VirtualAddr>, Box<dyn Error>> {
 
 pub fn backtrace(files: &ElfFiles) {
     match raw_backtrace(files) {
-        Ok(bt) => bt.iter().for_each(|a| println!("{:x}", a.0)),
+        Ok(bt) => bt.iter().for_each(|a| match files.find_line(*a) {
+            Ok((file, line, col)) => println!("{:x} {file}:{line}:{col}", a.0),
+            Err(_) => println!("{:x}", a.0),
+        }),
         Err(e) => println!("{e}"),
     }
 }
@@ -118,7 +121,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         let mut found_addr = false;
         while offset.0 as usize + bytes.len() < file.reader.len() {
             if match_bytes(file.reader, offset.0 as usize, bytes) {
-                match file.to_vaddr(offset) {
+                match file.offset_to_vaddr(offset) {
                     Some((load, addr)) => {
                         if !found_addr {
                             println!("{prefix}Addresses:");

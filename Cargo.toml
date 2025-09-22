@@ -8,9 +8,10 @@ clap = { version = "4.5.45", features = ["derive"] } # command line parser
 clap-repl = "0.3.2"                                  # interactive clap
 dirs = "3.0.2"                                       # find user's home directory
 memmap2 = "0.9.7"                                    # memory-mapped file support
-nu-ansi-term = "0.50.1"                              # style (for clap-repl)
+nu-ansi-term = "0.50.1"                              # used to style command prompt
+rangemap = "1.6.0"                                   # map with ranges for keys
 tabled = "0.20.0"                                    # formatted tables
-termio = "0.1.0"                                     # styled text
+termio = "0.1.0"                                     # used to style text output
 
 [dev-dependencies]
 insta = { version = "1.43.1" }

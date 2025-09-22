@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub};
+use std::ops::{Add, AddAssign, Sub};
 
 /// Index into the section table.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
@@ -16,6 +16,11 @@ pub struct Offset(pub u64);
 /// one of the load segments in the core file.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct VirtualAddr(pub u64);
+
+/// An address in an exe file. These will be relative to a memory mapped segment in the
+/// core file.
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
+pub struct RelativeAddr(pub u64);
 
 /// A range of bytes that can be addressed using either offsets into an ELF file or
 /// virtual addresses. In general bytes can always be addressed using offsets and bytes
@@ -102,6 +107,12 @@ impl VirtualAddr {
     }
 }
 
+// impl RelativeAddr {
+//     pub fn from_raw(addr: u64) -> Self {
+//         RelativeAddr(addr)
+//     }
+// }
+
 impl Offset {
     pub fn from_raw(addr: u64) -> Self {
         Offset(addr)
@@ -117,6 +128,20 @@ impl Add<i64> for VirtualAddr {
         } else {
             VirtualAddr(self.0 + rhs as u64)
         }
+    }
+}
+
+impl Add<u64> for RelativeAddr {
+    type Output = RelativeAddr;
+
+    fn add(self, rhs: u64) -> Self::Output {
+        RelativeAddr(self.0 + rhs)
+    }
+}
+
+impl AddAssign<u64> for RelativeAddr {
+    fn add_assign(&mut self, rhs: u64) {
+        self.0 += rhs;
     }
 }
 

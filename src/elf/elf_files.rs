@@ -1,4 +1,7 @@
-use crate::elf::{ElfFile, LoadSegment, PrStatus, Relocation, VirtualAddr};
+use crate::{
+    debug::LineInfo,
+    elf::{ElfFile, LoadSegment, PrStatus, Relocation, VirtualAddr},
+};
 use std::error::Error;
 
 pub struct ElfFiles {
@@ -50,6 +53,33 @@ impl ElfFiles {
     //         None => None,
     //     }
     // }
+
+    /// Returns file name, line number, and column for the given address.
+    pub fn find_line(&self, addr: VirtualAddr) -> Result<(String, u32, u16), Box<dyn Error>> {
+        match (&self.core, &self.exe) {
+            (Some(core), Some(exe)) => {
+                match core.vaddr_to_raddr(addr) {
+                    Some(addr) => {
+                        match exe.get_lines() {
+                            // TODO need to cache lines
+                            Some(lines) => match lines.lines.get(&addr) {
+                                Some(value) => {
+                                    let file = lines.files.get(value.file);
+                                    Ok((file.clone(), value.line, value.column))
+                                }
+                                None => Ok(("?".to_string(), 0, 0)),
+                            },
+                            None => Err("Couldn't find .debug_line section".into()),
+                        }
+                    }
+                    None => Err("couldn't find a load segment matching the addr".into()),
+                }
+            }
+            (None, Some(_)) => Err("need an core file to find file and line".into()),
+            (Some(_), None) => Err("need an exe file to find file and line".into()), // TODO addr2line doesn't need a core file
+            (None, None) => Err("need core and exe files to find file and line".into()),
+        }
+    }
 
     pub fn find_relocations(&self) -> Vec<Relocation> {
         let mut result = Vec::new();

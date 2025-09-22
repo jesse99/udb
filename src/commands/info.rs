@@ -5,7 +5,7 @@ use crate::elf::{
     LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, StringIndex,
     VirtualAddr,
 };
-use crate::repl::{DebugArgs, ExplainArgs, RegistersArgs, StringsArgs};
+use crate::repl::{DebugArgs, ExplainArgs, LineArgs, RegistersArgs, StringsArgs};
 use crate::utils;
 use crate::utils::Styling;
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
@@ -28,10 +28,9 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
     }
 }
 
-// TODO review DebugArgs, maybe cpmmand should be `info debug_lines`?
 pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
     let file = get_file(files, true);
-    match file.find_lines() {
+    match file.get_lines() {
         Some(lines) => {
             for (i, unit) in lines.units.iter().enumerate() {
                 println!("compilation unit {i}:");
@@ -53,9 +52,8 @@ pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
             }
             println!("relative addresses:");
             for (a, v) in lines.lines.iter().take(args.max_lines) {
-                // TODO limit should be an option
                 let f = &lines.files.get(v.file);
-                println!("   0x{a:x}  {}:{}:{}", f, v.line, v.column);
+                println!("   0x{:x}  {}:{}:{}", a.start.0, f, v.line, v.column);
             }
             if lines.lines.len() > args.max_lines {
                 println!("   ...");
@@ -142,6 +140,13 @@ pub fn info_header(files: &ElfFiles, args: &ExplainArgs) {
     b.println(args.explain);
 }
 
+pub fn info_line(files: &ElfFiles, args: &LineArgs) {
+    match files.find_line(VirtualAddr(args.addr)) {
+        Ok((file, line, col)) => println!("{file}:{line}:{col}"),
+        Err(e) => println!("{e}"),
+    }
+}
+
 pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
     pub fn find_file(
         files: &Option<Vec<MemoryMappedFile>>,
@@ -177,10 +182,10 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
     );
 
     let file = get_file(files, args.exe);
-    let files = file.find_memory_mapped_files();
+    let files = file.get_memory_mapped_files();
     for segment in file.loads.iter() {
         let mut note = String::new();
-        if let Some(file) = find_file(&files, segment.vbytes.start) {
+        if let Some(file) = find_file(files, segment.vbytes.start) {
             note.push_str(&format!("{} ", file.file_name));
         } else if is_stack(file, segment) {
             note.push_str("[stack] ");
@@ -203,7 +208,7 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
 
 pub fn info_mapped(files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
-    if let Some(files) = file.find_memory_mapped_files() {
+    if let Some(files) = file.get_memory_mapped_files() {
         let mut builder = TableBuilder::new();
         builder.add_col_l(
             "start",
