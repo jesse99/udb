@@ -4,6 +4,7 @@ mod elf;
 mod repl;
 mod utils;
 use crate::elf::ElfFiles;
+use crate::repl::ElfAction;
 use clap::Parser;
 use clap_repl::ClapEditor;
 use clap_repl::reedline::{
@@ -51,22 +52,24 @@ fn main() -> Result<(), Box<dyn Error>> {
     use repl::MainCommand::*;
     rl.repl(|repl: Repl| match repl.command {
         Bt => commands::backtrace(&files),
+        Elf(info) => match info.action {
+            ElfAction::Debug(args) => commands::info_debug(&files, &args),
+            ElfAction::Header(args) => commands::info_header(&files, &args),
+            ElfAction::Loads(args) => commands::info_loads(&files, &args),
+            ElfAction::Notes(args) => commands::info_notes(&files, &args),
+            ElfAction::Relocations(args) => commands::info_relocations(&files, &args),
+            ElfAction::Sections(args) => commands::info_sections(&files, &args),
+            ElfAction::Segments(args) => commands::info_segments(&files, &args),
+            ElfAction::Strings(args) => commands::info_strings(&files, &args),
+            ElfAction::Symbols(args) => commands::info_symbols(&files, &args),
+        },
         Find(args) => commands::find(&files, &args),
         Info(info) => match info.action {
-            InfoAction::Debug(args) => commands::info_debug(&files, &args),
-            InfoAction::Header(args) => commands::info_header(&files, &args),
             InfoAction::Line(args) => commands::info_line(&files, &args),
-            InfoAction::Loads(args) => commands::info_loads(&files, &args),
             InfoAction::Mapped(args) => commands::info_mapped(&files, &args),
-            InfoAction::Notes(args) => commands::info_notes(&files, &args),
             InfoAction::Process(args) => commands::info_process(&files, &args),
-            InfoAction::Relocations(args) => commands::info_relocations(&files, &args),
             InfoAction::Registers(args) => commands::info_registers(&files, &args),
-            InfoAction::Sections(args) => commands::info_sections(&files, &args),
-            InfoAction::Segments(args) => commands::info_segments(&files, &args),
             InfoAction::Signals(args) => commands::info_signals(&files, &args),
-            InfoAction::Strings(args) => commands::info_strings(&files, &args),
-            InfoAction::Symbols(args) => commands::info_symbols(&files, &args),
         },
         Hexdump(args) => commands::hexdump(&files, &args),
         Quit => process::exit(0),

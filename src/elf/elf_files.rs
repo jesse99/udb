@@ -1,7 +1,4 @@
-use crate::{
-    debug::LineInfo,
-    elf::{ElfFile, LoadSegment, PrStatus, Relocation, VirtualAddr},
-};
+use crate::elf::{ElfFile, LoadSegment, PrStatus, Relocation, VirtualAddr};
 use std::error::Error;
 
 pub struct ElfFiles {

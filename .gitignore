@@ -22,4 +22,5 @@ target
 
 .DS_Store
 **/*-back-color.xml
+.udb-todo-back-color.xml
 

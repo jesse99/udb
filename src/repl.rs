@@ -16,10 +16,13 @@ pub enum MainCommand {
     /// Show backtrace for the current thread
     Bt,
 
+    /// Show low level information about the core and exe files
+    Elf(ElfCommand),
+
     /// Search memory for a bit pattern
     Find(FindArgs),
 
-    /// Show various forms of information
+    /// Show higher level information about the cored process
     Info(InfoCommand),
 
     /// Print memory range as hex and ascii
@@ -30,36 +33,30 @@ pub enum MainCommand {
 }
 
 #[derive(Args)]
+pub struct ElfCommand {
+    #[clap(subcommand)]
+    pub action: ElfAction,
+}
+
+#[derive(Args)]
 pub struct InfoCommand {
     #[clap(subcommand)]
     pub action: InfoAction,
 }
 
 #[derive(Subcommand)]
-pub enum InfoAction {
+pub enum ElfAction {
     /// Show debug info
     Debug(DebugArgs),
 
     /// Show ELF header
     Header(ExplainArgs),
 
-    /// Print file and line number for a virtual address
-    Line(LineArgs),
-
     /// Show ELF load segments
     Loads(TableArgs),
 
-    /// Show memory mapped files
-    Mapped(TableArgs),
-
     /// Show sections
     Notes(TableArgs),
-
-    /// Show information the process associated with the core file
-    Process(ExplainArgs),
-
-    /// Show general purpose registers
-    Registers(RegistersArgs),
 
     /// Show relocations
     Relocations(TableArgs),
@@ -70,14 +67,29 @@ pub enum InfoAction {
     /// Show segments
     Segments(TableArgs),
 
-    /// Show information about signals
-    Signals(TableArgs),
-
     /// Dump string tables
     Strings(StringsArgs),
 
     /// Show symbols
     Symbols(TableArgs),
+}
+
+#[derive(Subcommand)]
+pub enum InfoAction {
+    /// Print file and line number for a virtual address
+    Line(LineArgs),
+
+    /// Show memory mapped files
+    Mapped(TableArgs),
+
+    /// Show information the process associated with the core file
+    Process(ExplainArgs),
+
+    /// Show general purpose registers
+    Registers(RegistersArgs),
+
+    /// Show information about signals
+    Signals(TableArgs),
 }
 
 #[derive(Args)]
