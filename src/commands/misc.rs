@@ -6,6 +6,7 @@ use crate::{
     utils,
 };
 use std::error::Error;
+use std::io::Write;
 
 /// Returns pointers to the instructions within the functions in the current call chain.
 fn raw_backtrace(files: &ElfFiles) -> Result<Vec<VirtualAddr>, Box<dyn Error>> {
@@ -53,13 +54,13 @@ fn raw_backtrace(files: &ElfFiles) -> Result<Vec<VirtualAddr>, Box<dyn Error>> {
     Ok(bt)
 }
 
-pub fn backtrace(files: &ElfFiles) {
+pub fn backtrace(mut out: impl Write, files: &ElfFiles) {
     match raw_backtrace(files) {
         Ok(bt) => bt.iter().for_each(|a| match files.find_line(*a) {
-            Ok((file, line, col)) => println!("{:x} {file}:{line}:{col}", a.0),
-            Err(_) => println!("{:x}", a.0),
+            Ok((file, line, col)) => writeln!(out, "0x{:x} {file}:{line}:{col}", a.0).unwrap(),
+            Err(_) => writeln!(out, "0x{:x}", a.0).unwrap(),
         }),
-        Err(e) => println!("{e}"),
+        Err(e) => writeln!(out, "{e}").unwrap(),
     }
 }
 
@@ -83,7 +84,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         let mut count = 0;
         for load in core.loads.iter() {
             let mut i = 0;
-            while i + bytes.len() < load.vbytes.size {
+            while i + bytes.len() < load.obytes.size {
                 if match_bytes(core.reader, i + load.obytes.start.0 as usize, bytes) {
                     println!("0x{:x}", i + load.vbytes.start.0 as usize);
                     if args.count > 0 {
@@ -119,6 +120,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         let mut offsets = Vec::new(); // we'll print addresses first
 
         let mut found_addr = false;
+        println!("len: {:x}", file.reader.len());
         while offset.0 as usize + bytes.len() < file.reader.len() {
             if match_bytes(file.reader, offset.0 as usize, bytes) {
                 match file.offset_to_vaddr(offset) {
@@ -145,7 +147,7 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
                             println!();
                         }
                     }
-                    None => offsets.push(offset),
+                    None => offsets.push(offset), // we'll print these later
                 }
                 offset = offset + bytes.len() as i64;
                 count += 1;
@@ -305,4 +307,59 @@ fn byte_str_to_vec(str: &str) -> Result<Vec<u8>, Box<dyn Error>> {
     }
 
     Ok(result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    macro_rules! debug_results {
+        ($v:ident, $f:ident) => {
+            let paths = vec![
+                std::path::PathBuf::from("cores/shopping-debug/app-debug"),
+                std::path::PathBuf::from("cores/shopping-debug/app-debug.core"),
+            ];
+            let files = ElfFiles::new(paths).unwrap();
+            $f(&mut $v, &files);
+        };
+    }
+
+    macro_rules! release_results {
+        ($v:ident, $f:ident) => {
+            let paths = vec![
+                std::path::PathBuf::from("cores/shopping-release/app-release"),
+                std::path::PathBuf::from("cores/shopping-release/app-release.core"),
+            ];
+            let files = ElfFiles::new(paths).unwrap();
+            $f(&mut $v, &files);
+        };
+    }
+
+    // macro so insta crate uses a sensible name for the snapshot file
+    macro_rules! do_test {
+        ($f:ident, debug_only) => {
+            // TODO for commands with args will need a variant of this that takes an arg
+            let mut v: Vec<u8> = Vec::new();
+            debug_results!(v, $f);
+
+            let s = String::from_utf8(v).unwrap();
+            insta::assert_snapshot!(s);
+        };
+
+        ($f:ident) => {
+            // TODO for commands with args will need a variant of this that takes an arg
+            let mut v: Vec<u8> = Vec::new();
+            debug_results!(v, $f);
+            writeln!(&mut v).unwrap();
+            release_results!(v, $f);
+
+            let s = String::from_utf8(v).unwrap();
+            insta::assert_snapshot!(s);
+        };
+    }
+
+    #[test]
+    fn bt() {
+        do_test!(backtrace, debug_only); // TODO get bt working in release
+    }
 }

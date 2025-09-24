@@ -17,7 +17,7 @@ use repl::Repl;
 use std::borrow::Cow;
 use std::error::Error;
 use std::path::PathBuf;
-use std::process;
+use std::{io, process};
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -51,7 +51,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     use repl::MainCommand::*;
     rl.repl(|repl: Repl| match repl.command {
-        Bt => commands::backtrace(&files),
+        Bt => commands::backtrace(io::stdout(), &files),
         Elf(info) => match info.action {
             ElfAction::Debug(args) => commands::info_debug(&files, &args),
             ElfAction::Header(args) => commands::info_header(&files, &args),
