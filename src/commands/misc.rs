@@ -120,7 +120,6 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         let mut offsets = Vec::new(); // we'll print addresses first
 
         let mut found_addr = false;
-        println!("len: {:x}", file.reader.len());
         while offset.0 as usize + bytes.len() < file.reader.len() {
             if match_bytes(file.reader, offset.0 as usize, bytes) {
                 match file.offset_to_vaddr(offset) {

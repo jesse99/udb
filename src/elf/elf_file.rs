@@ -57,6 +57,10 @@ impl ElfFile {
         })
     }
 
+    pub fn is_core(&self) -> bool {
+        self.header.etype == 4
+    }
+
     pub fn find_load_segment(&self, vaddr: VirtualAddr) -> Option<&LoadSegment> {
         self.loads.iter().find(|s| s.vbytes.contains(vaddr))
     }

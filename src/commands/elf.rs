@@ -353,22 +353,25 @@ pub fn info_segments(files: &ElfFiles, args: &TableArgs) {
         "offset",
         "the offset into the ELF file at which the segment appears",
     );
-    builder.add_col_r("vaddr", "the virtual address the segment starts at");
-    builder.add_col_r(
-        "paddr",
-        "the physical address the segment starts at (normally zero)",
-    );
+    if file.is_core() {
+        builder.add_col_r("vaddr", "the virtual address the segment starts at");
+    }
     builder.add_col_r("file size", "the size of the segment on disk");
-    builder.add_col_r("memory size", "the size of the segment in memory");
+    if file.is_core() {
+        builder.add_col_r("memory size", "the size of the segment in memory");
+    }
     builder.add_col_r("flags", "executable, writeable, and/or readable");
 
     for segment in segments.iter() {
         add_field!(builder, "type", "{:?}", segment.stype);
         add_field!(builder, "offset", "{:x}", segment.offset);
-        add_field!(builder, "vaddr", "{:x}", segment.vaddr);
-        add_field!(builder, "paddr", "{:x}", segment.paddr);
+        if file.is_core() {
+            add_field!(builder, "vaddr", "{:x}", segment.vaddr);
+        }
         add_field!(builder, "file size", "{:x}", segment.file_size);
-        add_field!(builder, "memory size", "{:x}", segment.mem_size);
+        if file.is_core() {
+            add_field!(builder, "memory size", "{:x}", segment.mem_size);
+        }
         add_field!(builder, "flags", "{}", ProgramHeader::flags(segment.flags));
     }
 
