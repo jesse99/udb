@@ -23,6 +23,7 @@ pub fn generate_style_file() {
     }
 }
 
+#[cfg(not(test))]
 macro_rules! print_styled {
     ($format:expr, $style:ident) => {
         let s = format!($format).$style();
@@ -47,6 +48,34 @@ macro_rules! print_styled {
     };
     ($out:ident, $format:expr, $style:ident, $arg1:expr, $arg2:expr) => {
         let s = format!($format, $arg1, $arg2).$style();
+        write!($out, "{s}").unwrap();
+    };
+}
+#[cfg(test)]
+macro_rules! print_styled {
+    ($format:expr, $style:ident) => {
+        let s = format!($format);
+        print!("{s}");
+    };
+    ($format:expr, $style:ident, $arg1:expr) => {
+        let s = format!($format, $arg1);
+        print!("{s}");
+    };
+    ($format:expr, $style:ident, $arg1:expr, $arg2:expr) => {
+        let s = format!($format, $arg1, $arg2);
+        print!("{s}");
+    };
+
+    ($out:ident, $format:expr, $style:ident) => {
+        let s = format!($format);
+        write!($out, "{s}").unwrap();
+    };
+    ($out:ident, $format:expr, $style:ident, $arg1:expr) => {
+        let s = format!($format, $arg1);
+        write!($out, "{s}").unwrap();
+    };
+    ($out:ident, $format:expr, $style:ident, $arg1:expr, $arg2:expr) => {
+        let s = format!($format, $arg1, $arg2);
         write!($out, "{s}").unwrap();
     };
 }
@@ -140,6 +169,7 @@ impl Styling for &str {
     }
 }
 
+#[cfg(not(test))]
 static TCSS: LazyLock<Termio> = LazyLock::new(|| {
     if let Some(mut path) = dirs::home_dir() {
         path.push(".udb");
@@ -156,6 +186,9 @@ static TCSS: LazyLock<Termio> = LazyLock::new(|| {
         Termio::new() // we'll have warned about this already
     }
 });
+
+#[cfg(test)]
+static TCSS: LazyLock<Termio> = LazyLock::new(Termio::new);
 
 fn make_dir(path: &Path) -> bool {
     match fs::create_dir(path) {
