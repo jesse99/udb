@@ -494,7 +494,17 @@ impl ElfFile {
             match ProgramHeader::new(reader, offset) {
                 Ok(ph) => {
                     if ph.stype == SegmentType::Load {
-                        let obytes = Bytes::<Offset>::from_raw(ph.offset, ph.mem_size as usize);
+                        // Some segments will have a virtual address but are not actually
+                        // mapped into the core. Here's an example:
+                        // udb> elf seg -t
+                        // type  offset             vaddr  paddr  file size  memory size  flags
+                        // ----  ------             -----  -----  ---------  -----------  -----
+                        // Load    9000      7ff8fc0c5000      0          0       195000    x-r    not in the core but has a lot of vbytes
+                        // Load    9000      7ff8fc25a000      0          0        58000    --r
+                        // Load    9000      7ff8fc2b2000      0          0         1000    ---
+                        // Load    9000      7ff8fc2b3000      0       4000         4000    --r    all vbytes are mapped into the core
+                        // Load    d000      7ff8fc2b7000      0       2000         2000    -wr
+                        let obytes = Bytes::<Offset>::from_raw(ph.offset, ph.file_size as usize);
                         let vbytes = Bytes::<VirtualAddr>::from_raw(ph.vaddr, ph.mem_size as usize);
                         loads.push(LoadSegment {
                             obytes,

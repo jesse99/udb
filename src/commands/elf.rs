@@ -162,12 +162,13 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
 
     let mut builder = TableBuilder::new();
     builder.add_col_l("vaddr", "the virtual address the segment starts at");
-    builder.add_col_r("memsz", "the size of the segment in memory");
+    builder.add_col_r("vbytes", "the size of the segment in memory");
     builder.add_col_r("flags", "executable, writeable, and/or readable");
     builder.add_col_r(
         "offset",
         "the offset into the ELF file at which the segment appears",
     );
+    builder.add_col_r("obytes", "the size of the segment in the core");
     builder.add_col_l(
         "note",
         "path to memory mapped file or how the segment is used",
@@ -189,9 +190,10 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
         }
 
         add_field!(builder, "vaddr", "{:x}", segment.vbytes.start.0);
-        add_field!(builder, "memsz", "{:x}", segment.vbytes.size);
+        add_field!(builder, "vbytes", "{:x}", segment.vbytes.size);
         add_field!(builder, "flags", segment.flags());
         add_field!(builder, "offset", "{:x}", segment.obytes.start.0);
+        add_field!(builder, "obytes", "{:x}", segment.obytes.size);
         add_field!(builder, "note", note);
     }
 
