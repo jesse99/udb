@@ -5,6 +5,7 @@ use crate::utils::Styling;
 use crate::utils::print_styled;
 use memmap2::Mmap;
 use std::error::Error;
+use std::io::Write;
 
 pub struct Reader {
     pub little_endian: bool,
@@ -126,35 +127,42 @@ impl Reader {
     //     }
     // }
 
-    pub fn hex_dump(&self, addr: u64, offset: Offset, size: usize, labels: HexdumpLabels) {
+    pub fn hex_dump(
+        &self,
+        out: &mut impl Write,
+        addr: u64,
+        offset: Offset,
+        size: usize,
+        labels: HexdumpLabels,
+    ) {
         let offset = offset.0 as usize;
         let mut i = offset;
         loop {
             match labels {
                 HexdumpLabels::None => (),
                 HexdumpLabels::Addr => {
-                    print_styled!("{:012x}: ", hex_offset, addr + (i - offset) as u64);
+                    print_styled!(out, "{:012x}: ", hex_offset, addr + (i - offset) as u64);
                 }
                 HexdumpLabels::Zero => {
-                    print_styled!("{:04x}: ", hex_offset, i - offset);
+                    print_styled!(out, "{:04x}: ", hex_offset, i - offset);
                 }
             }
 
             for j in 0..8 {
                 if i + j >= offset + size || i + j >= self.len() {
-                    print_styled!("   ", hex_hex);
+                    print_styled!(out, "   ", hex_hex);
                 } else {
                     let o = Offset((i + j) as u64);
-                    print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
+                    print_styled!(out, "{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
             }
             print!(" ");
             for j in 0..8 {
                 if i + j + 8 >= offset + size || i + j + 8 >= self.len() {
-                    print_styled!("   ", hex_hex);
+                    print_styled!(out, "   ", hex_hex);
                 } else {
                     let o = Offset((i + j) as u64);
-                    print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
+                    print_styled!(out, "{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
             }
             print!("   ");
@@ -165,9 +173,9 @@ impl Reader {
                 let o = Offset((i + j) as u64);
                 let ch = self.read_byte(o).unwrap() as char;
                 if ch.is_ascii_graphic() {
-                    print_styled!("{ch}", hex_ascii);
+                    print_styled!(out, "{ch}", hex_ascii);
                 } else {
-                    print_styled!(".", hex_ascii);
+                    print_styled!(out, ".", hex_ascii);
                 }
             }
             println!();

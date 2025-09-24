@@ -36,6 +36,19 @@ macro_rules! print_styled {
         let s = format!($format, $arg1, $arg2).$style();
         print!("{s}");
     };
+
+    ($out:ident, $format:expr, $style:ident) => {
+        let s = format!($format).$style();
+        write!($out, "{s}").unwrap();
+    };
+    ($out:ident, $format:expr, $style:ident, $arg1:expr) => {
+        let s = format!($format, $arg1).$style();
+        write!($out, "{s}").unwrap();
+    };
+    ($out:ident, $format:expr, $style:ident, $arg1:expr, $arg2:expr) => {
+        let s = format!($format, $arg1, $arg2).$style();
+        write!($out, "{s}").unwrap();
+    };
 }
 pub(crate) use print_styled;
 

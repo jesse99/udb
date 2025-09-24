@@ -71,7 +71,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             InfoAction::Registers(args) => commands::info_registers(&files, &args),
             InfoAction::Signals(args) => commands::info_signals(&files, &args),
         },
-        Hexdump(args) => commands::hexdump(&files, &args),
+        Hexdump(args) => commands::hexdump(io::stdout(), &files, &args),
         Quit => process::exit(0),
     });
     Ok(())

@@ -1,0 +1,17 @@
+---
+source: src/commands/misc.rs
+expression: s
+---
+Core Addresses:
+   0x7ff8fc2ceb25
+   0x7ff8fc3077c4
+   0x7ff8fc3078a9
+Exe Offsets:
+   0x3871
+
+Core Addresses:
+   0x7f9c7097eb25
+   0x7f9c709b77c4
+   0x7f9c709b78a9
+Exe Offsets:
+   0x3996

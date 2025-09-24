@@ -89,6 +89,7 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
                     writeln!(out, "0x{:x}", i + load.vbytes.start.0 as usize).unwrap();
                     if args.count > 0 {
                         hexdump_segment(
+                            &mut out,
                             core,
                             &HexdumpArgs {
                                 value: i as u64 + load.vbytes.start.0,
@@ -139,6 +140,7 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
                         if args.count > 0 {
                             write!(out, "   ").unwrap();
                             hexdump_segment(
+                                out,
                                 file,
                                 &HexdumpArgs {
                                     value: addr.0,
@@ -174,7 +176,7 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
                 if args.count > 0 {
                     write!(out, "   ").unwrap();
                     file.reader
-                        .hex_dump(0, *offset, args.count, HexdumpLabels::None);
+                        .hex_dump(out, 0, *offset, args.count, HexdumpLabels::None);
                     writeln!(out).unwrap();
                 }
                 count += 1;
@@ -220,17 +222,18 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
     }
 }
 
-pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
+pub fn hexdump(mut out: impl Write, files: &ElfFiles, args: &HexdumpArgs) {
     if args.offset {
         if args.exe {
             match &files.exe {
-                Some(file) => hexdump_any(file, Offset(args.value), args.count, args.labels),
+                Some(file) => hexdump_any(out, file, Offset(args.value), args.count, args.labels),
                 None => utils::warn("--exe was used but there is no exe"),
             }
         } else {
             match &files.core {
-                Some(file) => hexdump_any(file, Offset(args.value), args.count, args.labels),
+                Some(file) => hexdump_any(out, file, Offset(args.value), args.count, args.labels),
                 None => hexdump_any(
+                    out,
                     files.exe.as_ref().unwrap(),
                     Offset(args.value),
                     args.count,
@@ -243,7 +246,7 @@ pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
         if args.exe {
             match &files.exe {
                 Some(file) => match file.find_load_segment(vaddr) {
-                    Some(load) => hexdump_segment(file, args, load),
+                    Some(load) => hexdump_segment(&mut out, file, args, load),
                     None => utils::warn("--couldn't find a load segment for the address"),
                 },
                 None => utils::warn("--exe was used but there is no exe"),
@@ -251,13 +254,13 @@ pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
         } else {
             match &files.core {
                 Some(file) => match file.find_load_segment(vaddr) {
-                    Some(load) => hexdump_segment(file, args, load),
+                    Some(load) => hexdump_segment(&mut out, file, args, load),
                     None => utils::warn("couldn't find a load segment for the address"),
                 },
                 None => {
                     let file = files.exe.as_ref().unwrap();
                     match file.find_load_segment(vaddr) {
-                        Some(load) => hexdump_segment(file, args, load),
+                        Some(load) => hexdump_segment(&mut out, file, args, load),
                         None => utils::warn("couldn't find a load segment for the address"),
                     }
                 }
@@ -266,19 +269,30 @@ pub fn hexdump(files: &ElfFiles, args: &HexdumpArgs) {
     }
 }
 
-pub fn hexdump_segment(file: &ElfFile, args: &HexdumpArgs, load: &LoadSegment) {
+pub fn hexdump_segment(
+    out: &mut impl Write,
+    file: &ElfFile,
+    args: &HexdumpArgs,
+    load: &LoadSegment,
+) {
     let vaddr = VirtualAddr::from_raw(args.value);
     if let Some(offset) = load.to_offset(vaddr) {
         file.reader
-            .hex_dump(args.value, offset, args.count, args.labels);
+            .hex_dump(out, args.value, offset, args.count, args.labels);
     }
 }
 
-pub fn hexdump_any(file: &ElfFile, offset: Offset, count: usize, labels: HexdumpLabels) {
+pub fn hexdump_any(
+    mut out: impl Write,
+    file: &ElfFile,
+    offset: Offset,
+    count: usize,
+    labels: HexdumpLabels,
+) {
     if labels == HexdumpLabels::Addr {
         utils::warn("Can't use --labels=address when dumping by offset");
     } else {
-        file.reader.hex_dump(0, offset, count, labels);
+        file.reader.hex_dump(&mut out, 0, offset, count, labels);
     }
 }
 
@@ -412,7 +426,7 @@ mod tests {
     fn find_all_str() {
         let args = FindArgs {
             all: true,
-            string: Some("apple".to_string()),
+            string: Some("count".to_string()),
             count: 0,
             hex: None,
             max_results: 0,
@@ -420,9 +434,39 @@ mod tests {
         do_test!(find, &args);
     }
 
-    // TODO
-    // --hex
-    // --all --hex
-    // --string --count
-    // --hex --max-results
+    #[test]
+    fn find_hex() {
+        let args = FindArgs {
+            all: false,
+            string: None,
+            count: 0,
+            hex: Some("20".to_string()),
+            max_results: 10,
+        };
+        do_test!(find, &args);
+    }
+
+    #[test]
+    fn find_all_hex() {
+        let args = FindArgs {
+            all: true,
+            string: None,
+            count: 0,
+            hex: Some("20".to_string()),
+            max_results: 10,
+        };
+        do_test!(find, &args);
+    }
+
+    #[test]
+    fn find_str_dump() {
+        let args = FindArgs {
+            all: false,
+            string: Some("count".to_string()),
+            count: 25,
+            hex: None,
+            max_results: 0,
+        };
+        do_test!(find, &args);
+    }
 }
