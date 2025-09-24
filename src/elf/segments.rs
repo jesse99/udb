@@ -22,9 +22,6 @@ pub struct ProgramHeader {
     /// Virtual address of the first byte in the segment.
     pub vaddr: u64,
 
-    /// Physical address of the first byte in the segment.
-    pub paddr: u64,
-
     /// Number of bytes in the segment in the core file.
     pub file_size: u64,
 
@@ -92,8 +89,6 @@ pub struct LoadSegment {
     /// Addressing for the bytes in the segment using virtual addresses as in the cored process.
     pub vbytes: Bytes<VirtualAddr>,
 
-    // /// The physical address the segment starts at. Will be zero for core files.
-    // pub paddr: u64,
     /// Readable, writeable, and/or executable.
     pub flags: u32,
 }
@@ -135,7 +130,7 @@ impl ProgramHeader {
             let p_flags = s.read_word()?;
             let p_offset = s.read_offset()?;
             let p_vaddr = s.read_addr()?;
-            let p_paddr = s.read_addr()?;
+            let _p_paddr = s.read_addr()?;
             let p_filesz = s.read_xword()?;
             let p_memsz = s.read_xword()?;
             let _p_align = s.read_xword()?;
@@ -144,7 +139,6 @@ impl ProgramHeader {
                 flags: p_flags,
                 offset: p_offset,
                 vaddr: p_vaddr,
-                paddr: p_paddr,
                 file_size: p_filesz,
                 mem_size: p_memsz,
             })
@@ -152,7 +146,7 @@ impl ProgramHeader {
             let p_type = SegmentType::from_u32(s.read_word()?);
             let p_offset = s.read_offset()?;
             let p_vaddr = s.read_addr()?;
-            let p_paddr = s.read_addr()?;
+            let _p_paddr = s.read_addr()?;
             let p_filesz = s.read_word()? as u64;
             let p_memsz = s.read_word()? as u64;
             let p_flags = s.read_word()?;
@@ -162,7 +156,6 @@ impl ProgramHeader {
                 flags: p_flags,
                 offset: p_offset,
                 vaddr: p_vaddr,
-                paddr: p_paddr,
                 file_size: p_filesz,
                 mem_size: p_memsz,
             })
