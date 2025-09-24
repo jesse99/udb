@@ -64,7 +64,7 @@ pub fn backtrace(mut out: impl Write, files: &ElfFiles) {
     }
 }
 
-pub fn find(files: &ElfFiles, args: &FindArgs) {
+pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
     fn match_bytes(reader: &Reader, i: usize, bytes: &[u8]) -> bool {
         for (j, byte) in bytes.iter().enumerate() {
             let offset = Offset::from_raw((i + j) as u64);
@@ -80,13 +80,13 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         true
     }
 
-    fn search_load_segments(core: &ElfFile, args: &FindArgs, bytes: &[u8]) {
+    fn search_load_segments(mut out: impl Write, core: &ElfFile, args: &FindArgs, bytes: &[u8]) {
         let mut count = 0;
         for load in core.loads.iter() {
             let mut i = 0;
             while i + bytes.len() < load.obytes.size {
                 if match_bytes(core.reader, i + load.obytes.start.0 as usize, bytes) {
-                    println!("0x{:x}", i + load.vbytes.start.0 as usize);
+                    writeln!(out, "0x{:x}", i + load.vbytes.start.0 as usize).unwrap();
                     if args.count > 0 {
                         hexdump_segment(
                             core,
@@ -99,12 +99,12 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
                             },
                             load,
                         );
-                        println!();
+                        writeln!(out).unwrap();
                     }
                     i += bytes.len();
                     count += 1;
                     if count == args.max_results {
-                        println!("...");
+                        writeln!(out, "...").unwrap();
                         return;
                     }
                 } else {
@@ -114,7 +114,13 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
         }
     }
 
-    fn search_all(prefix: &str, file: &ElfFile, args: &FindArgs, bytes: &[u8]) {
+    fn search_all(
+        out: &mut impl Write,
+        prefix: &str,
+        file: &ElfFile,
+        args: &FindArgs,
+        bytes: &[u8],
+    ) {
         let mut count = 0;
         let mut offset = Offset::from_raw(0);
         let mut offsets = Vec::new(); // we'll print addresses first
@@ -125,13 +131,13 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
                 match file.offset_to_vaddr(offset) {
                     Some((load, addr)) => {
                         if !found_addr {
-                            println!("{prefix}Addresses:");
+                            writeln!(out, "{prefix}Addresses:").unwrap();
                             found_addr = true;
                         }
-                        println!("   0x{:x}", addr.0);
+                        writeln!(out, "   0x{:x}", addr.0).unwrap();
 
                         if args.count > 0 {
-                            print!("   ");
+                            write!(out, "   ").unwrap();
                             hexdump_segment(
                                 file,
                                 &HexdumpArgs {
@@ -143,69 +149,74 @@ pub fn find(files: &ElfFiles, args: &FindArgs) {
                                 },
                                 load,
                             );
-                            println!();
+                            writeln!(out).unwrap();
+                        }
+                        count += 1;
+                        if count == args.max_results {
+                            writeln!(out, "   ...").unwrap();
+                            return;
                         }
                     }
                     None => offsets.push(offset), // we'll print these later
                 }
                 offset = offset + bytes.len() as i64;
-                count += 1;
-                if count == args.max_results {
-                    println!("...");
-                    return;
-                }
             } else {
                 offset = offset + 1;
             }
         }
 
         if !offsets.is_empty() {
-            println!("{prefix}Offsets:");
+            count = 0;
+            writeln!(out, "{prefix}Offsets:").unwrap();
             for offset in offsets.iter() {
-                println!("   0x{:x}", offset.0);
+                writeln!(out, "   0x{:x}", offset.0).unwrap();
 
                 if args.count > 0 {
-                    print!("   ");
+                    write!(out, "   ").unwrap();
                     file.reader
                         .hex_dump(0, *offset, args.count, HexdumpLabels::None);
-                    println!();
+                    writeln!(out).unwrap();
+                }
+                count += 1;
+                if count == args.max_results {
+                    writeln!(out, "   ...").unwrap();
+                    return;
                 }
             }
         }
     }
 
-    fn find(files: &ElfFiles, args: &FindArgs, bytes: &[u8]) {
+    fn find(mut out: impl Write, files: &ElfFiles, args: &FindArgs, bytes: &[u8]) {
         if args.all {
             if let Some(core) = &files.core
                 && let Some(exe) = &files.exe
             {
-                search_all("Core ", core, args, bytes);
-                search_all("Exe ", exe, args, bytes);
+                search_all(&mut out, "Core ", core, args, bytes);
+                search_all(&mut out, "Exe ", exe, args, bytes);
             } else if let Some(core) = &files.core {
-                search_all("", core, args, bytes);
+                search_all(&mut out, "", core, args, bytes);
             } else {
-                search_all("", files.exe.as_ref().unwrap(), args, bytes); // safe because we'll always have either core or exe
+                search_all(&mut out, "", files.exe.as_ref().unwrap(), args, bytes); // safe because we'll always have either core or exe
             }
         } else if let Some(core) = &files.core {
-            search_load_segments(core, args, bytes);
+            search_load_segments(out, core, args, bytes);
         } else {
             // Technically we should only do this if --all is used but it's kind of
             // silly to not do a search if all we have is an exe.
-            search_all("", files.exe.as_ref().unwrap(), args, bytes);
+            search_all(&mut out, "", files.exe.as_ref().unwrap(), args, bytes);
         }
     }
 
     // TODO there are probably crates with better substring algorithms
     // TODO might also help to read words at a time where possible
     if let Some(s) = &args.hex {
-        // TODO need to search both the exe and core (for --all)
         match byte_str_to_vec(s) {
-            Ok(bytes) => find(files, args, &bytes),
+            Ok(bytes) => find(out, files, args, &bytes),
             Err(err) => utils::warn(&err.to_string()),
         }
     } else if let Some(s) = &args.string {
         let bytes = ascii_str_to_vec(s);
-        find(files, args, &bytes);
+        find(out, files, args, &bytes);
     }
 }
 
@@ -321,6 +332,14 @@ mod tests {
             let files = ElfFiles::new(paths).unwrap();
             $f(&mut $v, &files);
         };
+        ($v:ident, $f:ident, $a:expr) => {
+            let paths = vec![
+                std::path::PathBuf::from("cores/shopping-debug/app-debug"),
+                std::path::PathBuf::from("cores/shopping-debug/app-debug.core"),
+            ];
+            let files = ElfFiles::new(paths).unwrap();
+            $f(&mut $v, &files, $a);
+        };
     }
 
     macro_rules! release_results {
@@ -331,6 +350,14 @@ mod tests {
             ];
             let files = ElfFiles::new(paths).unwrap();
             $f(&mut $v, &files);
+        };
+        ($v:ident, $f:ident, $a:expr) => {
+            let paths = vec![
+                std::path::PathBuf::from("cores/shopping-release/app-release"),
+                std::path::PathBuf::from("cores/shopping-release/app-release.core"),
+            ];
+            let files = ElfFiles::new(paths).unwrap();
+            $f(&mut $v, &files, $a);
         };
     }
 
@@ -344,13 +371,20 @@ mod tests {
             let s = String::from_utf8(v).unwrap();
             insta::assert_snapshot!(s);
         };
-
         ($f:ident) => {
-            // TODO for commands with args will need a variant of this that takes an arg
             let mut v: Vec<u8> = Vec::new();
             debug_results!(v, $f);
             writeln!(&mut v).unwrap();
             release_results!(v, $f);
+
+            let s = String::from_utf8(v).unwrap();
+            insta::assert_snapshot!(s);
+        };
+        ($f:ident, $a:expr) => {
+            let mut v: Vec<u8> = Vec::new();
+            debug_results!(v, $f, $a);
+            writeln!(&mut v).unwrap();
+            release_results!(v, $f, $a);
 
             let s = String::from_utf8(v).unwrap();
             insta::assert_snapshot!(s);
@@ -361,4 +395,35 @@ mod tests {
     fn bt() {
         do_test!(backtrace, debug_only); // TODO get bt working in release
     }
+
+    #[test]
+    fn find_default_str() {
+        let args = FindArgs {
+            all: false,
+            string: Some("apple".to_string()),
+            count: 0,
+            hex: None,
+            max_results: 0,
+        };
+        do_test!(find, &args);
+    }
+
+    #[test]
+    fn find_default_str() {
+        let args = FindArgs {
+            all: true,
+            string: Some("apple".to_string()),
+            count: 0,
+            hex: None,
+            max_results: 0,
+        };
+        do_test!(find, &args);
+    }
+
+    // TODO
+    // --all --string
+    // --hex
+    // --all --hex
+    // --string --count
+    // --hex --max-results
 }

@@ -63,7 +63,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             ElfAction::Strings(args) => commands::info_strings(&files, &args),
             ElfAction::Symbols(args) => commands::info_symbols(&files, &args),
         },
-        Find(args) => commands::find(&files, &args),
+        Find(args) => commands::find(io::stdout(), &files, &args),
         Info(info) => match info.action {
             InfoAction::Line(args) => commands::info_line(&files, &args),
             InfoAction::Mapped(args) => commands::info_mapped(&files, &args),
