@@ -66,10 +66,14 @@ impl ElfFile {
     }
 
     pub fn offset_to_vaddr(&self, offset: Offset) -> Option<(&LoadSegment, VirtualAddr)> {
-        self.loads
-            .iter()
-            .find(|s| s.obytes.contains(offset))
-            .map(|s| (s, s.vbytes.start + (offset - s.obytes.start)))
+        if self.is_core() {
+            self.loads
+                .iter()
+                .find(|s| s.obytes.contains(offset))
+                .map(|s| (s, s.vbytes.start + (offset - s.obytes.start)))
+        } else {
+            None // exe files don't have virtual addresses
+        }
     }
 
     pub fn vaddr_to_raddr(&self, addr: VirtualAddr) -> Option<RelativeAddr> {
