@@ -409,7 +409,7 @@ mod tests {
     }
 
     #[test]
-    fn find_default_str() {
+    fn find_all_str() {
         let args = FindArgs {
             all: true,
             string: Some("apple".to_string()),
@@ -421,7 +421,6 @@ mod tests {
     }
 
     // TODO
-    // --all --string
     // --hex
     // --all --hex
     // --string --count

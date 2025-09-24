@@ -142,18 +142,20 @@ impl Reader {
 
             for j in 0..8 {
                 if i + j >= offset + size || i + j >= self.len() {
-                    break;
+                    print_styled!("   ", hex_hex);
+                } else {
+                    let o = Offset((i + j) as u64);
+                    print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
-                let o = Offset((i + j) as u64);
-                print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
             }
             print!(" ");
             for j in 0..8 {
-                if i + j >= offset + size || i + j >= self.len() {
-                    break;
+                if i + j + 8 >= offset + size || i + j + 8 >= self.len() {
+                    print_styled!("   ", hex_hex);
+                } else {
+                    let o = Offset((i + j) as u64);
+                    print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
-                let o = Offset((i + j) as u64);
-                print_styled!("{:02x} ", hex_hex, self.read_byte(o).unwrap());
             }
             print!("   ");
             for j in 0..16 {
