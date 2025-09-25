@@ -1,0 +1,9 @@
+---
+source: src/commands/info.rs
+expression: s
+---
+pid   34741                               
+file  cores/shopping-debug/app-debug.core 
+
+pid   31378                                   
+file  cores/shopping-release/app-release.core

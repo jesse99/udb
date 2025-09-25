@@ -1,0 +1,11 @@
+---
+source: src/commands/info.rs
+expression: s
+---
+SIGSEGV
+sender pid  0 
+sender uid  0 
+
+SIGSEGV
+sender pid  0 
+sender uid  0

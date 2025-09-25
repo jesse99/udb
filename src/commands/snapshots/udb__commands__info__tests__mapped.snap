@@ -1,0 +1,17 @@
+---
+source: src/commands/info.rs
+expression: s
+---
+start                  end     size  file name                                      
+-----                  ---     ----  ---------                                      
+55957a492000  55957a497000    20480  /home/vorisek/shopping/app-debug               
+7ff8fc09d000  7ff8fc2b9000  2211840  /usr/lib/x86_64-linux-gnu/libc.so.6            
+7ff8fc2ce000  7ff8fc305000   225280  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 
+7ff8fc306000  7ff8fc30a000    16384  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 
+
+start                  end     size  file name                                      
+-----                  ---     ----  ---------                                      
+55d1a7821000  55d1a7826000    20480  /home/vorisek/shopping/app-release             
+7f9c7074d000  7f9c70969000  2211840  /usr/lib/x86_64-linux-gnu/libc.so.6            
+7f9c7097e000  7f9c709b5000   225280  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2 
+7f9c709b6000  7f9c709ba000    16384  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2

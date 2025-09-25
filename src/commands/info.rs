@@ -3,9 +3,10 @@ use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
 use crate::elf::VirtualAddr;
 use crate::repl::{ExplainArgs, LineArgs, RegistersArgs};
 use crate::utils;
-use crate::utils::Styling;
+use crate::utils::{Styling, uwriteln};
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
 use std::cmp::Ordering;
+use std::io::Write;
 
 fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
     if exe {
@@ -24,14 +25,14 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
     }
 }
 
-pub fn info_line(files: &ElfFiles, args: &LineArgs) {
+pub fn info_line(mut out: impl Write, files: &ElfFiles, args: &LineArgs) {
     match files.find_line(VirtualAddr(args.addr)) {
-        Ok((file, line, col)) => println!("{file}:{line}:{col}"),
-        Err(e) => println!("{e}"),
+        Ok((file, line, col)) => uwriteln!(out, "{file}:{line}:{col}"),
+        Err(e) => uwriteln!(out, "{e}"),
     }
 }
 
-pub fn info_mapped(files: &ElfFiles, args: &TableArgs) {
+pub fn info_mapped(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
     if let Some(files) = file.get_memory_mapped_files() {
         let mut builder = TableBuilder::new();
@@ -53,13 +54,13 @@ pub fn info_mapped(files: &ElfFiles, args: &TableArgs) {
             add_field!(builder, "file name", file.file_name);
         }
 
-        builder.println(args.titles, args.explain);
+        builder.writeln(out, args.titles, args.explain);
     } else {
         println!("No memory mapped files found.");
     }
 }
 
-pub fn info_process(files: &ElfFiles, args: &ExplainArgs) {
+pub fn info_process(out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
     let file = get_file(files, args.exe);
     if let Some(status) = file.find_prstatus() {
         let mut b = SimpleTableBuilder::new();
@@ -77,13 +78,13 @@ pub fn info_process(files: &ElfFiles, args: &ExplainArgs) {
             "path to the ELF file that was loaded"
         );
 
-        b.println(args.explain);
+        b.writeln(out, args.explain);
     } else {
         println!("No prstatus found");
     }
 }
 
-pub fn info_registers(files: &ElfFiles, args: &RegistersArgs) {
+pub fn info_registers(mut out: impl Write, files: &ElfFiles, args: &RegistersArgs) {
     // These come out in a really annoying order so we'll sort them.
     let file = get_file(files, args.exe);
     if let Some(status) = file.find_prstatus() {
@@ -133,7 +134,7 @@ pub fn info_registers(files: &ElfFiles, args: &RegistersArgs) {
             add_field!(builder, "decimal", value);
         }
 
-        builder.println(args.titles, args.explain);
+        builder.writeln(out, args.titles, args.explain);
 
         if args.explain {
             // TODO really these are x86 only
@@ -151,17 +152,17 @@ pub fn info_registers(files: &ElfFiles, args: &RegistersArgs) {
             );
         }
     } else {
-        println!("No prstatus found");
+        uwriteln!(out, "No prstatus found");
     }
 }
 
-pub fn info_signals(files: &ElfFiles, args: &TableArgs) {
+pub fn info_signals(mut out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
     let maybe_status = file.find_prstatus();
     let maybe_signal = file.find_signal_info();
 
     if let Some(status) = &maybe_status {
-        println!("{}", status.signal()); // this one does a nice job formatting signal and code
+        uwriteln!(out, "{}", status.signal()); // this one does a nice job formatting signal and code
     } else {
         utils::warn("Couldn't find prstatus note");
     }
@@ -228,8 +229,81 @@ pub fn info_signals(files: &ElfFiles, args: &TableArgs) {
             }
             _ => (),
         }
-        b.println(args.explain);
+        b.writeln(out, args.explain);
     } else {
         utils::warn("Couldn't find signal note");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::{debug_results, do_test, release_results};
+
+    #[test]
+    fn line1() {
+        let args = LineArgs {
+            addr: 0x55957a4931d7,
+        };
+        do_test!(info_line, &args);
+    }
+
+    #[test]
+    fn line2() {
+        let args = LineArgs {
+            addr: 0x55957a4931e0,
+        };
+        do_test!(info_line, &args);
+    }
+
+    #[test]
+    fn mapped() {
+        let args = TableArgs {
+            exe: false,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_mapped, &args);
+    }
+
+    #[test]
+    fn process() {
+        let args = ExplainArgs {
+            exe: false,
+            explain: false,
+        };
+        do_test!(info_process, &args);
+    }
+
+    #[test]
+    fn registers() {
+        let args = RegistersArgs {
+            all: false,
+            exe: false,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_registers, &args);
+    }
+
+    #[test]
+    fn registers_all() {
+        let args = RegistersArgs {
+            all: true,
+            exe: false,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_registers, &args);
+    }
+
+    #[test]
+    fn signals() {
+        let args = TableArgs {
+            exe: false,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_signals, &args);
     }
 }

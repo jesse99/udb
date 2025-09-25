@@ -68,15 +68,6 @@ impl TableBuilder {
         }
     }
 
-    pub fn println(&self, titles: bool, explain: bool) {
-        println!("{}", self.table_str(titles));
-
-        if explain {
-            println!();
-            println!("{}", self.explain_str());
-        }
-    }
-
     pub fn writeln(&self, mut out: impl Write, titles: bool, explain: bool) {
         uwriteln!(out, "{}", self.table_str(titles));
 
@@ -188,15 +179,6 @@ impl SimpleTableBuilder {
             help: help.to_string(),
         };
         self.rows.push(row);
-    }
-
-    pub fn println(&self, explain: bool) {
-        println!("{}", self.table_str());
-
-        if explain {
-            println!();
-            println!("{}", self.explain_str());
-        }
     }
 
     pub fn writeln(&self, mut out: impl Write, explain: bool) {

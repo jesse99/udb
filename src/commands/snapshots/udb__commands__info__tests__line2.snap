@@ -1,0 +1,7 @@
+---
+source: src/commands/info.rs
+expression: s
+---
+./item.c:22:17
+
+couldn't find a load segment matching the addr
