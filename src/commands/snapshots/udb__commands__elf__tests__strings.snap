@@ -1,0 +1,81 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+section 7
+0: 
+1: __cxa_finalize
+2: malloc
+3: __libc_start_main
+4: free
+5: printf
+6: libc.so.6
+7: GLIBC_2.34
+8: GLIBC_2.2.5
+9: _ITM_deregisterTMCloneTable
+...
+
+section 35
+0: 
+1: Scrt1.o
+2: __abi_tag
+3: crtstuff.c
+4: deregister_tm_clones
+5: __do_global_dtors_aux
+6: completed.0
+7: __do_global_dtors_aux_fini_array_entry
+8: frame_dummy
+9: __frame_dummy_init_array_entry
+...
+
+section 36
+0: 
+1: .symtab
+2: .strtab
+3: .shstrtab
+4: .interp
+5: .note.gnu.property
+6: .note.gnu.build-id
+7: .note.ABI-tag
+8: .gnu.hash
+9: .dynsym
+...
+
+section 7
+0: 
+1: __cxa_finalize
+2: __printf_chk
+3: __libc_start_main
+4: libc.so.6
+5: GLIBC_2.2.5
+6: GLIBC_2.3.4
+7: GLIBC_2.34
+8: _ITM_deregisterTMCloneTable
+9: __gmon_start__
+...
+
+section 37
+0: 
+1: Scrt1.o
+2: __abi_tag
+3: main.c
+4: crtstuff.c
+5: deregister_tm_clones
+6: __do_global_dtors_aux
+7: completed.0
+8: __do_global_dtors_aux_fini_array_entry
+9: frame_dummy
+...
+
+section 38
+0: 
+1: .symtab
+2: .strtab
+3: .shstrtab
+4: .interp
+5: .note.gnu.property
+6: .note.gnu.build-id
+7: .note.ABI-tag
+8: .gnu.hash
+9: .dynsym
+...

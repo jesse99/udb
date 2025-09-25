@@ -220,7 +220,7 @@ pub fn info_notes(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
+pub fn info_relocations(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     // TODO probably should use an arg w/o --exe
     let mut builder = TableBuilder::new();
     builder.add_col_r("symbol", "name of the symbol to relocate");
@@ -293,10 +293,10 @@ pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
         add_field!(builder, "addend", addend);
     }
 
-    builder.println(args.titles, args.explain);
+    builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
+pub fn info_sections(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
     let sections = file.get_sections();
 
@@ -342,10 +342,10 @@ pub fn info_sections(files: &ElfFiles, args: &TableArgs) {
         add_field!(builder, "info", section.info);
     }
 
-    builder.println(args.titles, args.explain);
+    builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_segments(files: &ElfFiles, args: &TableArgs) {
+pub fn info_segments(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
     let segments = ElfFile::find_segments(file.reader, &file.header);
 
@@ -377,7 +377,7 @@ pub fn info_segments(files: &ElfFiles, args: &TableArgs) {
         add_field!(builder, "flags", "{}", ProgramHeader::flags(segment.flags));
     }
 
-    builder.println(args.titles, args.explain);
+    builder.writeln(out, args.titles, args.explain);
     if args.explain {
         println!();
         println!("Numeric fields are all in hex. Usually it's more informative to use");
@@ -385,7 +385,7 @@ pub fn info_segments(files: &ElfFiles, args: &TableArgs) {
     }
 }
 
-pub fn info_strings(files: &ElfFiles, args: &StringsArgs) {
+pub fn info_strings(mut out: impl Write, files: &ElfFiles, args: &StringsArgs) {
     let file = get_file(files, true);
     let num_sections = file.get_sections().len();
 
@@ -395,15 +395,15 @@ pub fn info_strings(files: &ElfFiles, args: &StringsArgs) {
             let section = &file.get_sections()[index];
             if section.stype == SectionType::StringTable {
                 if found {
-                    println!();
+                    writeln!(out).unwrap();
                 }
-                println!("section {index}");
+                writeln!(out, "section {index}").unwrap();
                 let strings = file.find_strings(section, args.max_results);
                 for (i, s) in strings.iter().enumerate() {
-                    println!("{i}: {s}");
+                    writeln!(out, "{i}: {s}").unwrap();
                 }
                 if strings.len() == args.max_results {
-                    println!("...");
+                    writeln!(out, "...").unwrap();
                 }
                 found = true;
             }
@@ -411,7 +411,7 @@ pub fn info_strings(files: &ElfFiles, args: &StringsArgs) {
     }
 }
 
-pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
+pub fn info_symbols(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let mut builder = TableBuilder::new();
     builder.add_col_r("index", "symbol index");
     builder.add_col_l("name", "the symbol name");
@@ -438,7 +438,6 @@ pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
     let tables = [file.find_dynamic_symbols(), file.find_symbols()];
     let tables = tables.iter().flatten().collect::<Vec<_>>();
     for table in tables.iter() {
-        println!("using section {}", table.section.link.0);
         for (i, e) in table.entries.iter().enumerate() {
             // TODO function names can be really long (especially with name mangling)
             // readelf puts a pretty small cap on these, maybe we should default to the same
@@ -458,7 +457,7 @@ pub fn info_symbols(files: &ElfFiles, args: &TableArgs) {
         }
     }
 
-    builder.println(args.titles, args.explain);
+    builder.writeln(out, args.titles, args.explain);
 }
 
 fn index_to_str(file: &ElfFile, index: SymbolIndex) -> String {
@@ -534,5 +533,77 @@ mod tests {
             titles: true,
         };
         do_test!(info_notes, &args);
+    }
+
+    #[test]
+    fn exe_relocs() {
+        // these aren't in the core
+        let args = TableArgs {
+            exe: true,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_relocations, &args);
+    }
+
+    #[test]
+    fn exe_sections() {
+        // these aren't in the core
+        let args = TableArgs {
+            exe: true,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_sections, &args);
+    }
+
+    #[test]
+    fn core_segs() {
+        let args = TableArgs {
+            exe: false,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_segments, &args);
+    }
+
+    #[test]
+    fn exe_segs() {
+        let args = TableArgs {
+            exe: true,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_segments, &args);
+    }
+
+    #[test]
+    fn strings() {
+        // these aren't in the core
+        let args = StringsArgs {
+            index: None,
+            max_results: 10,
+        };
+        do_test!(info_strings, &args);
+    }
+
+    #[test]
+    fn strings_35() {
+        // these aren't in the core
+        let args = StringsArgs {
+            index: Some(35),
+            max_results: 4,
+        };
+        do_test!(info_strings, &args);
+    }
+
+    #[test]
+    fn symbols() {
+        let args = TableArgs {
+            exe: true,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_symbols, &args);
     }
 }

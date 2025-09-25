@@ -1,0 +1,110 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+index  name                                         type    dynamic  value  size  binding  visibility  related       
+-----  ----                                         ----    -------  -----  ----  -------  ----------  -------       
+    0   (0)                                         None    true         0     0  Local    Default                   
+    1  free (41)                                    Func    true         0     0  Global   Default                   
+    2  __libc_start_main (23)                       Func    true         0     0  Global   Default                   
+    3  _ITM_deregisterTMCloneTable (86)             None    true         0     0  Weak     Default                   
+    4  printf (46)                                  Func    true         0     0  Global   Default                   
+    5  __gmon_start__ (114)                         None    true         0     0  Weak     Default                   
+    6  malloc (16)                                  Func    true         0     0  Global   Default                   
+    7  _ITM_registerTMCloneTable (129)              None    true         0     0  Weak     Default                   
+    8  __cxa_finalize (1)                           Func    true         0     0  Weak     Default                   
+    0   (0)                                         None    false        0     0  Local    Default                   
+    1  Scrt1.o (1)                                  File    false        0     0  Local    Default     Value         
+    2  __abi_tag (9)                                Object  false      38c    32  Local    Default     .note.ABI-tag 
+    3  crtstuff.c (19)                              File    false        0     0  Local    Default     Value         
+    4  deregister_tm_clones (30)                    Func    false     10f0     0  Local    Default     .text         
+    5  register_tm_clones (32)                      Func    false     1120     0  Local    Default     .text         
+    6  __do_global_dtors_aux (51)                   Func    false     1160     0  Local    Default     .text         
+    7  completed.0 (73)                             Object  false     4010     1  Local    Default     .bss          
+    8  __do_global_dtors_aux_fini_array_entry (85)  Object  false     3db0     0  Local    Default     .fini_array   
+    9  frame_dummy (124)                            Func    false     11a0     0  Local    Default     .text         
+   10  __frame_dummy_init_array_entry (136)         Object  false     3da8     0  Local    Default     .init_array   
+   11  item.c (167)                                 File    false        0     0  Local    Default     Value         
+   12  shopping_cart (174)                          Object  false     4018     8  Local    Default     .bss          
+   13  main.c (188)                                 File    false        0     0  Local    Default     Value         
+   14  crtstuff.c (19)                              File    false        0     0  Local    Default     Value         
+   15  __FRAME_END__ (195)                          Object  false     21d4     0  Local    Default     .eh_frame     
+   16   (0)                                         File    false        0     0  Local    Default     Value         
+   17  _DYNAMIC (209)                               Object  false     3db8     0  Local    Default     .dynamic      
+   18  __GNU_EH_FRAME_HDR (218)                     None    false     2050     0  Local    Default     .eh_frame_hdr 
+   19  _GLOBAL_OFFSET_TABLE_ (237)                  Object  false     3fa8     0  Local    Default     .got          
+   20  free@GLIBC_2.2.5 (259)                       Func    false        0     0  Global   Default                   
+   21  __libc_start_main@GLIBC_2.34 (276)           Func    false        0     0  Global   Default                   
+   22  _ITM_deregisterTMCloneTable (305)            None    false        0     0  Weak     Default                   
+   23  data_start (367)                             None    false     4000     0  Weak     Default     .data         
+   24  _edata (333)                                 None    false     4010     0  Global   Default     .data         
+   25  _fini (340)                                  Func    false     15b8     0  Global   Hidden      .fini         
+   26  printf@GLIBC_2.2.5 (346)                     Func    false        0     0  Global   Default                   
+   27  __data_start (365)                           None    false     4000     0  Global   Default     .data         
+   28  __gmon_start__ (378)                         None    false        0     0  Weak     Default                   
+   29  __dso_handle (393)                           Object  false     4008     0  Global   Hidden      .data         
+   30  _IO_stdin_used (406)                         Object  false     2000     4  Global   Default     .rodata       
+   31  get_cost (421)                               Func    false     1480    47  Global   Default     .text         
+   32  malloc@GLIBC_2.2.5 (430)                     Func    false        0     0  Global   Default                   
+   33  add_to_cart (449)                            Func    false     11c0   334  Global   Default     .text         
+   34  _end (461)                                   None    false     4020     0  Global   Default     .bss          
+   35  _start (371)                                 Func    false     10c0    38  Global   Default     .text         
+   36  __bss_start (466)                            None    false     4010     0  Global   Default     .bss          
+   37  main (478)                                   Func    false     1500   181  Global   Default     .text         
+   38  __TMC_END__ (483)                            Object  false     4010     0  Global   Hidden      .data         
+   39  _ITM_registerTMCloneTable (495)              None    false        0     0  Weak     Default                   
+   40  __cxa_finalize@GLIBC_2.2.5 (521)             Func    false        0     0  Weak     Default                   
+   41  _init (548)                                  Func    false     1000     0  Global   Hidden      .init         
+   42  get_name (554)                               Func    false     14c0    53  Global   Default     .text         
+   43  remove_from_cart (563)                       Func    false     1340   270  Global   Default     .text         
+
+index  name                                         type    dynamic  value  size  binding  visibility  related       
+-----  ----                                         ----    -------  -----  ----  -------  ----------  -------       
+    0   (0)                                         None    true         0     0  Local    Default                   
+    1  __libc_start_main (29)                       Func    true         0     0  Global   Default                   
+    2  _ITM_deregisterTMCloneTable (92)             None    true         0     0  Weak     Default                   
+    3  __gmon_start__ (120)                         None    true         0     0  Weak     Default                   
+    4  __printf_chk (16)                            Func    true         0     0  Global   Default                   
+    5  _ITM_registerTMCloneTable (135)              None    true         0     0  Weak     Default                   
+    6  __cxa_finalize (1)                           Func    true         0     0  Weak     Default                   
+    0   (0)                                         None    false        0     0  Local    Default                   
+    1  Scrt1.o (1)                                  File    false        0     0  Local    Default     Value         
+    2  __abi_tag (9)                                Object  false      38c    32  Local    Default     .note.ABI-tag 
+    3  main.c (19)                                  File    false        0     0  Local    Default     Value         
+    4  crtstuff.c (26)                              File    false        0     0  Local    Default     Value         
+    5  deregister_tm_clones (37)                    Func    false     1160     0  Local    Default     .text         
+    6  register_tm_clones (39)                      Func    false     1190     0  Local    Default     .text         
+    7  __do_global_dtors_aux (58)                   Func    false     11d0     0  Local    Default     .text         
+    8  completed.0 (80)                             Object  false     4010     1  Local    Default     .bss          
+    9  __do_global_dtors_aux_fini_array_entry (92)  Object  false     3dc0     0  Local    Default     .fini_array   
+   10  frame_dummy (131)                            Func    false     1210     0  Local    Default     .text         
+   11  __frame_dummy_init_array_entry (143)         Object  false     3db8     0  Local    Default     .init_array   
+   12  item.c (174)                                 File    false        0     0  Local    Default     Value         
+   13  crtstuff.c (26)                              File    false        0     0  Local    Default     Value         
+   14  __FRAME_END__ (181)                          Object  false     2180     0  Local    Default     .eh_frame     
+   15   (0)                                         File    false        0     0  Local    Default     Value         
+   16  _DYNAMIC (195)                               Object  false     3dc8     0  Local    Default     .dynamic      
+   17  __GNU_EH_FRAME_HDR (204)                     None    false     2028     0  Local    Default     .eh_frame_hdr 
+   18  _GLOBAL_OFFSET_TABLE_ (223)                  Object  false     3fb8     0  Local    Default     .got          
+   19  __libc_start_main@GLIBC_2.34 (245)           Func    false        0     0  Global   Default                   
+   20  _ITM_deregisterTMCloneTable (274)            None    false        0     0  Weak     Default                   
+   21  data_start (317)                             None    false     4000     0  Weak     Default     .data         
+   22  _edata (302)                                 None    false     4010     0  Global   Default     .data         
+   23  _fini (309)                                  Func    false     1328     0  Global   Hidden      .fini         
+   24  __data_start (315)                           None    false     4000     0  Global   Default     .data         
+   25  __gmon_start__ (328)                         None    false        0     0  Weak     Default                   
+   26  __dso_handle (343)                           Object  false     4008     0  Global   Hidden      .data         
+   27  _IO_stdin_used (356)                         Object  false     2000     4  Global   Default     .rodata       
+   28  get_cost (371)                               Func    false     12c0    38  Global   Default     .text         
+   29  add_to_cart (380)                            Func    false     1240    14  Global   Default     .text         
+   30  _end (392)                                   None    false     4018     0  Global   Default     .bss          
+   31  _start (321)                                 Func    false     1130    38  Global   Default     .text         
+   32  __bss_start (397)                            None    false     4010     0  Global   Default     .bss          
+   33  main (409)                                   Func    false     1080   170  Global   Default     .text         
+   34  __printf_chk@GLIBC_2.3.4 (414)               Func    false        0     0  Global   Default                   
+   35  __TMC_END__ (439)                            Object  false     4010     0  Global   Hidden      .data         
+   36  _ITM_registerTMCloneTable (451)              None    false        0     0  Weak     Default                   
+   37  __cxa_finalize@GLIBC_2.2.5 (477)             Func    false        0     0  Weak     Default                   
+   38  _init (504)                                  Func    false     1000     0  Global   Hidden      .init         
+   39  get_name (510)                               Func    false     1300    40  Global   Default     .text         
+   40  remove_from_cart (519)                       Func    false     1280    14  Global   Default     .text

@@ -1,0 +1,29 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+                     symbol  index  string  dynamic  offset  type      addend 
+                     ------  -----  ------  -------  ------  ----      ------ 
+                                 0       0     true    3da8  Relative    4512 
+                                 0       0     true    3db0  Relative    4448 
+                                 0       0     true    4008  Relative   16392 
+          __libc_start_main      2      23     true    3fd8  GlobDat        0 
+_ITM_deregisterTMCloneTable      3      86     true    3fe0  GlobDat        0 
+             __gmon_start__      5     114     true    3fe8  GlobDat        0 
+  _ITM_registerTMCloneTable      7     129     true    3ff0  GlobDat        0 
+             __cxa_finalize      8       1     true    3ff8  GlobDat        0 
+                    Scrt1.o      1       1    false    3fc0  JumpSlot       0 
+       deregister_tm_clones      4      30    false    3fc8  JumpSlot       0 
+      __do_global_dtors_aux      6      51    false    3fd0  JumpSlot       0 
+
+                     symbol  index  string  dynamic  offset  type      addend 
+                     ------  -----  ------  -------  ------  ----      ------ 
+                                 0       0     true    3db8  Relative    4624 
+                                 0       0     true    3dc0  Relative    4560 
+                                 0       0     true    4008  Relative   16392 
+          __libc_start_main      1      29     true    3fd8  GlobDat        0 
+_ITM_deregisterTMCloneTable      2      92     true    3fe0  GlobDat        0 
+             __gmon_start__      3     120     true    3fe8  GlobDat        0 
+  _ITM_registerTMCloneTable      5     135     true    3ff0  GlobDat        0 
+             __cxa_finalize      6       1     true    3ff8  GlobDat        0 
+                 crtstuff.c      4      26    false    3fd0  JumpSlot       0

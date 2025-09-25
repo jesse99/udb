@@ -1,0 +1,35 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+type         offset  file size  flags 
+----         ------  ---------  ----- 
+Phdr             40        2d8    --r 
+Interpreter     318         1c    --r 
+Load              0        698    --r 
+Load           1000        5c5    x-r 
+Load           2000        1d8    --r 
+Load           2da8        268    -wr 
+Dynamic        2db8        1f0    -wr 
+Note            338         30    --r 
+Note            368         44    --r 
+Null            338         30    --r 
+Null           2050         54    --r 
+Null              0          0    -wr 
+Null           2da8        258    --r 
+
+type         offset  file size  flags 
+----         ------  ---------  ----- 
+Phdr             40        2d8    --r 
+Interpreter     318         1c    --r 
+Load              0        648    --r 
+Load           1000        335    x-r 
+Load           2000        184    --r 
+Load           2db8        258    -wr 
+Dynamic        2dc8        1f0    -wr 
+Note            338         30    --r 
+Note            368         44    --r 
+Null            338         30    --r 
+Null           2028         54    --r 
+Null              0          0    -wr 
+Null           2db8        248    --r

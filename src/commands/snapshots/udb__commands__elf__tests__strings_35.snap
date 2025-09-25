@@ -1,0 +1,10 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+section 35
+0: 
+1: Scrt1.o
+2: __abi_tag
+3: crtstuff.c
+...

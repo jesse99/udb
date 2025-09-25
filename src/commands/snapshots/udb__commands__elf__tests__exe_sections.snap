@@ -1,0 +1,85 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+index  name                type                vaddr  offset  size  entry_size  align  link  info  flags         
+-----  ----                ----                -----  ------  ----  ----------  -----  ----  ----  -----         
+    0                      Null                    0       0     0           0      0     0     0  none          
+    1  .interp             ProgBits              318     318    28           0      1     0     0  ALLOC         
+    2  .note.gnu.property  Note                  338     338    48           0      8     0     0  ALLOC         
+    3  .note.gnu.build-id  Note                  368     368    36           0      4     0     0  ALLOC         
+    4  .note.ABI-tag       Note                  38c     38c    32           0      4     0     0  ALLOC         
+    5  .gnu.hash           Hash                  3b0     3b0    36           0      8     6     0  ALLOC         
+    6  .dynsym             DynamicSymbolTable    3d8     3d8   216          24      8     7     1  ALLOC         
+    7  .dynstr             StringTable           4b0     4b0   155           0      1     0     0  ALLOC         
+    8  .gnu.version        VerSym                54c     54c    18           2      2     6     0  ALLOC         
+    9  .gnu.version_r      VerNeed               560     560    48           0      8     7     1  ALLOC         
+   10  .rela.dyn           RelocationsWith       590     590   192          24      8     6     0  ALLOC         
+   11  .rela.plt           RelocationsWith       650     650    72          24      8     6    24  ALLOC INFO    
+   12  .init               ProgBits             1000    1000    27           0      4     0     0  ALLOC EXEC    
+   13  .plt                ProgBits             1020    1020    64          16     16     0     0  ALLOC EXEC    
+   14  .plt.got            ProgBits             1060    1060    16          16     16     0     0  ALLOC EXEC    
+   15  .plt.sec            ProgBits             1070    1070    48          16     16     0     0  ALLOC EXEC    
+   16  .text               ProgBits             10c0    10c0  1269           0     64     0     0  ALLOC EXEC    
+   17  .fini               ProgBits             15b8    15b8    13           0      4     0     0  ALLOC EXEC    
+   18  .rodata             ProgBits             2000    2000    78           0      8     0     0  ALLOC         
+   19  .eh_frame_hdr       ProgBits             2050    2050    84           0      4     0     0  ALLOC         
+   20  .eh_frame           ProgBits             20a8    20a8   304           0      8     0     0  ALLOC         
+   21  .init_array         InitArray            3da8    2da8     8           8      8     0     0  WRITE ALLOC   
+   22  .fini_array         FiniArray            3db0    2db0     8           8      8     0     0  WRITE ALLOC   
+   23  .dynamic            Dynamic              3db8    2db8   496          16      8     7     0  WRITE ALLOC   
+   24  .got                ProgBits             3fa8    2fa8    88           8      8     0     0  WRITE ALLOC   
+   25  .data               ProgBits             4000    3000    16           0      8     0     0  WRITE ALLOC   
+   26  .bss                NoBits               4010    3010    16           0      8     0     0  WRITE ALLOC   
+   27  .comment            ProgBits                0    3010    43           1      1     0     0  MERGE STRINGS 
+   28  .debug_aranges      ProgBits                0    303b    96           0      1     0     0  none          
+   29  .debug_info         ProgBits                0    309b   969           0      1     0     0  none          
+   30  .debug_abbrev       ProgBits                0    3464   511           0      1     0     0  none          
+   31  .debug_line         ProgBits                0    3663   498           0      1     0     0  none          
+   32  .debug_str          ProgBits                0    3855   281           1      1     0     0  MERGE STRINGS 
+   33  .debug_loc          ProgBits                0    396e   480           0      1     0     0  none          
+   34  .symtab             SymbolTable             0    3b50  1056          24      8    35    20  none          
+   35  .strtab             StringTable             0    3f70   580           0      1     0     0  none          
+   36  .shstrtab           StringTable             0    41b4   357           0      1     0     0  none          
+
+index  name                type                vaddr  offset  size  entry_size  align  link  info  flags         
+-----  ----                ----                -----  ------  ----  ----------  -----  ----  ----  -----         
+    0                      Null                    0       0     0           0      0     0     0  none          
+    1  .interp             ProgBits              318     318    28           0      1     0     0  ALLOC         
+    2  .note.gnu.property  Note                  338     338    48           0      8     0     0  ALLOC         
+    3  .note.gnu.build-id  Note                  368     368    36           0      4     0     0  ALLOC         
+    4  .note.ABI-tag       Note                  38c     38c    32           0      4     0     0  ALLOC         
+    5  .gnu.hash           Hash                  3b0     3b0    36           0      8     6     0  ALLOC         
+    6  .dynsym             DynamicSymbolTable    3d8     3d8   168          24      8     7     1  ALLOC         
+    7  .dynstr             StringTable           480     480   161           0      1     0     0  ALLOC         
+    8  .gnu.version        VerSym                522     522    14           2      2     6     0  ALLOC         
+    9  .gnu.version_r      VerNeed               530     530    64           0      8     7     1  ALLOC         
+   10  .rela.dyn           RelocationsWith       570     570   192          24      8     6     0  ALLOC         
+   11  .rela.plt           RelocationsWith       630     630    24          24      8     6    24  ALLOC INFO    
+   12  .init               ProgBits             1000    1000    27           0      4     0     0  ALLOC EXEC    
+   13  .plt                ProgBits             1020    1020    32          16     16     0     0  ALLOC EXEC    
+   14  .plt.got            ProgBits             1040    1040    16          16     16     0     0  ALLOC EXEC    
+   15  .plt.sec            ProgBits             1050    1050    16          16     16     0     0  ALLOC EXEC    
+   16  .text               ProgBits             1080    1080   680           0     64     0     0  ALLOC EXEC    
+   17  .fini               ProgBits             1328    1328    13           0      4     0     0  ALLOC EXEC    
+   18  .rodata             ProgBits             2000    2000    37           0      4     0     0  ALLOC         
+   19  .eh_frame_hdr       ProgBits             2028    2028    84           0      4     0     0  ALLOC         
+   20  .eh_frame           ProgBits             2080    2080   260           0      8     0     0  ALLOC         
+   21  .init_array         InitArray            3db8    2db8     8           8      8     0     0  WRITE ALLOC   
+   22  .fini_array         FiniArray            3dc0    2dc0     8           8      8     0     0  WRITE ALLOC   
+   23  .dynamic            Dynamic              3dc8    2dc8   496          16      8     7     0  WRITE ALLOC   
+   24  .got                ProgBits             3fb8    2fb8    72           8      8     0     0  WRITE ALLOC   
+   25  .data               ProgBits             4000    3000    16           0      8     0     0  WRITE ALLOC   
+   26  .bss                NoBits               4010    3010     8           0      1     0     0  WRITE ALLOC   
+   27  .comment            ProgBits                0    3010    43           1      1     0     0  MERGE STRINGS 
+   28  .debug_aranges      ProgBits                0    303b    96           0      1     0     0  none          
+   29  .debug_info         ProgBits                0    309b  1230           0      1     0     0  none          
+   30  .debug_abbrev       ProgBits                0    3569   658           0      1     0     0  none          
+   31  .debug_line         ProgBits                0    37fb   377           0      1     0     0  none          
+   32  .debug_str          ProgBits                0    3974   263           1      1     0     0  MERGE STRINGS 
+   33  .debug_line_str     ProgBits                0    3a7b   160           1      1     0     0  MERGE STRINGS 
+   34  .debug_loclists     ProgBits                0    3b1b    62           0      1     0     0  none          
+   35  .debug_rnglists     ProgBits                0    3b59    40           0      1     0     0  none          
+   36  .symtab             SymbolTable             0    3b88   984          24      8    37    19  none          
+   37  .strtab             StringTable             0    3f60   536           0      1     0     0  none          
+   38  .shstrtab           StringTable             0    4178   394           0      1     0     0  none
