@@ -486,4 +486,12 @@ mod tests {
         };
         do_test!(info_header, &args);
     }
+    #[test]
+    fn exe_header() {
+        let args = ExplainArgs {
+            exe: true,
+            explain: false,
+        };
+        do_test!(info_header, &args);
+    }
 }

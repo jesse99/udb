@@ -1,0 +1,29 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+type                 shared object file 
+little endian        true               
+64-bit               true               
+osabi                Linux              
+abiversion           0                  
+machine              AMD x86-64         
+flags                0                  
+ph_offset            64                 
+num_ph_entries       13                 
+section_offset       17184              
+num_section_entries  37                 
+string_table_index   36                 
+
+type                 shared object file 
+little endian        true               
+64-bit               true               
+osabi                Linux              
+abiversion           0                  
+machine              AMD x86-64         
+flags                0                  
+ph_offset            64                 
+num_ph_entries       13                 
+section_offset       17160              
+num_section_entries  39                 
+string_table_index   38
