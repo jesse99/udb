@@ -9,7 +9,7 @@ use crate::elf::{
 };
 use crate::repl::{ElfLineArgs, ExplainArgs, StringsArgs};
 use crate::utils;
-use crate::utils::Styling;
+use crate::utils::{Styling, uwriteln};
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
 
 fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
@@ -34,36 +34,35 @@ pub fn elf_line(mut out: impl Write, files: &ElfFiles, args: &ElfLineArgs) {
     match file.get_lines() {
         Some(lines) => {
             for (i, unit) in lines.units.iter().enumerate() {
-                writeln!(out, "compilation unit {i}:").unwrap();
-                writeln!(out, "   sources:").unwrap();
+                uwriteln!(out, "compilation unit {i}:");
+                uwriteln!(out, "   sources:");
                 for source in unit.source_files.iter() {
                     match source.length {
                         Some(n) => {
-                            writeln!(out, "      {}/{} {} bytes", source.dir, source.file, n)
-                                .unwrap()
+                            uwriteln!(out, "      {}/{} {} bytes", source.dir, source.file, n)
                         }
-                        None => writeln!(out, "      {}/{}", source.dir, source.file).unwrap(),
+                        None => uwriteln!(out, "      {}/{}", source.dir, source.file),
                     }
                 }
-                writeln!(out, "   include paths:").unwrap();
+                uwriteln!(out, "   include paths:");
                 for i in unit.include_paths.iter() {
-                    writeln!(out, "      {}", i).unwrap();
+                    uwriteln!(out, "      {}", i);
                 }
             }
-            writeln!(out, "files:").unwrap();
+            uwriteln!(out, "files:");
             for f in lines.files.iter() {
-                writeln!(out, "   {}", f).unwrap();
+                uwriteln!(out, "   {}", f);
             }
-            writeln!(out, "relative addresses:").unwrap();
+            uwriteln!(out, "relative addresses:");
             for (a, v) in lines.lines.iter().take(args.max_lines) {
                 let f = &lines.files.get(v.file);
-                writeln!(out, "   0x{:x}  {}:{}:{}", a.start.0, f, v.line, v.column).unwrap();
+                uwriteln!(out, "   0x{:x}  {}:{}:{}", a.start.0, f, v.line, v.column);
             }
             if lines.lines.len() > args.max_lines {
-                writeln!(out, "   ...").unwrap();
+                uwriteln!(out, "   ...");
             }
         }
-        None => writeln!(out, "Couldn't find .debug_line section").unwrap(),
+        None => uwriteln!(out, "Couldn't find .debug_line section"),
     }
 }
 
@@ -398,15 +397,15 @@ pub fn elf_strings(mut out: impl Write, files: &ElfFiles, args: &StringsArgs) {
             let section = &file.get_sections()[index];
             if section.stype == SectionType::StringTable {
                 if found {
-                    writeln!(out).unwrap();
+                    uwriteln!(out);
                 }
-                writeln!(out, "section {index}").unwrap();
+                uwriteln!(out, "section {index}");
                 let strings = file.find_strings(section, args.max_results);
                 for (i, s) in strings.iter().enumerate() {
-                    writeln!(out, "{i}: {s}").unwrap();
+                    uwriteln!(out, "{i}: {s}");
                 }
                 if strings.len() == args.max_results {
-                    writeln!(out, "...").unwrap();
+                    uwriteln!(out, "...");
                 }
                 found = true;
             }

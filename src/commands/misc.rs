@@ -1,5 +1,6 @@
 use crate::elf::{ElfFile, LoadSegment, Offset, VirtualAddr};
 use crate::repl::HexdumpLabels;
+use crate::utils::{uwrite, uwriteln};
 use crate::{
     elf::{ElfFiles, Reader},
     repl::{FindArgs, HexdumpArgs},
@@ -57,10 +58,10 @@ fn raw_backtrace(files: &ElfFiles) -> Result<Vec<VirtualAddr>, Box<dyn Error>> {
 pub fn backtrace(mut out: impl Write, files: &ElfFiles) {
     match raw_backtrace(files) {
         Ok(bt) => bt.iter().for_each(|a| match files.find_line(*a) {
-            Ok((file, line, col)) => writeln!(out, "0x{:x} {file}:{line}:{col}", a.0).unwrap(),
-            Err(_) => writeln!(out, "0x{:x}", a.0).unwrap(),
+            Ok((file, line, col)) => uwriteln!(out, "0x{:x} {file}:{line}:{col}", a.0),
+            Err(_) => uwriteln!(out, "0x{:x}", a.0),
         }),
-        Err(e) => writeln!(out, "{e}").unwrap(),
+        Err(e) => uwriteln!(out, "{e}"),
     }
 }
 
@@ -86,7 +87,7 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
             let mut i = 0;
             while i + bytes.len() < load.obytes.size {
                 if match_bytes(core.reader, i + load.obytes.start.0 as usize, bytes) {
-                    writeln!(out, "0x{:x}", i + load.vbytes.start.0 as usize).unwrap();
+                    uwriteln!(out, "0x{:x}", i + load.vbytes.start.0 as usize);
                     if args.count > 0 {
                         hexdump_segment(
                             &mut out,
@@ -100,12 +101,12 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
                             },
                             load,
                         );
-                        writeln!(out).unwrap();
+                        uwriteln!(out);
                     }
                     i += bytes.len();
                     count += 1;
                     if count == args.max_results {
-                        writeln!(out, "...").unwrap();
+                        uwriteln!(out, "...");
                         return;
                     }
                 } else {
@@ -132,13 +133,13 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
                 match file.offset_to_vaddr(offset) {
                     Some((load, addr)) => {
                         if !found_addr {
-                            writeln!(out, "{prefix}Addresses:").unwrap();
+                            uwriteln!(out, "{prefix}Addresses:");
                             found_addr = true;
                         }
-                        writeln!(out, "   0x{:x}", addr.0).unwrap();
+                        uwriteln!(out, "   0x{:x}", addr.0);
 
                         if args.count > 0 {
-                            write!(out, "   ").unwrap();
+                            uwrite!(out, "   ");
                             hexdump_segment(
                                 out,
                                 file,
@@ -151,11 +152,11 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
                                 },
                                 load,
                             );
-                            writeln!(out).unwrap();
+                            uwriteln!(out);
                         }
                         count += 1;
                         if count == args.max_results {
-                            writeln!(out, "   ...").unwrap();
+                            uwriteln!(out, "   ...");
                             return;
                         }
                     }
@@ -169,19 +170,19 @@ pub fn find(out: impl Write, files: &ElfFiles, args: &FindArgs) {
 
         if !offsets.is_empty() {
             count = 0;
-            writeln!(out, "{prefix}Offsets:").unwrap();
+            uwriteln!(out, "{prefix}Offsets:");
             for offset in offsets.iter() {
-                writeln!(out, "   0x{:x}", offset.0).unwrap();
+                uwriteln!(out, "   0x{:x}", offset.0);
 
                 if args.count > 0 {
-                    write!(out, "   ").unwrap();
+                    uwrite!(out, "   ");
                     file.reader
                         .hex_dump(out, 0, *offset, args.count, HexdumpLabels::None);
-                    writeln!(out).unwrap();
+                    uwriteln!(out);
                 }
                 count += 1;
                 if count == args.max_results {
-                    writeln!(out, "   ...").unwrap();
+                    uwriteln!(out, "   ...");
                     return;
                 }
             }

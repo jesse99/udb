@@ -1,0 +1,33 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+compilation unit 0:
+   sources:
+      ./item.c
+      /usr/include/stdio.h
+      /usr/include/stdlib.h
+      /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h
+   include paths:
+      /usr/include
+      /usr/lib/gcc/x86_64-linux-gnu/11/include
+compilation unit 1:
+   sources:
+      ./main.c
+      /usr/include/stdio.h
+      ./item.h
+   include paths:
+      /usr/include
+files:
+   ./item.c
+   ./main.c
+relative addresses:
+   0x11c0  ./item.c:18:1
+   0x11d0  ./item.c:21:5
+   0x11e0  ./item.c:22:17
+   0x11e7  ./item.c:22:12
+   0x11ed  ./item.c:23:25
+   ...
+
+files:
+relative addresses:

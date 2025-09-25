@@ -1,8 +1,8 @@
 use crate::elf::Offset;
 use crate::repl::HexdumpLabels;
-use crate::utils;
 use crate::utils::Styling;
 use crate::utils::print_styled;
+use crate::utils::{self, uwrite, uwriteln};
 use memmap2::Mmap;
 use std::error::Error;
 use std::io::Write;
@@ -156,7 +156,7 @@ impl Reader {
                     print_styled!(out, "{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
             }
-            write!(out, " ").unwrap();
+            uwrite!(out, " ");
             for j in 0..8 {
                 if i + j + 8 >= offset + size || i + j + 8 >= self.len() {
                     print_styled!(out, "   ", hex_hex);
@@ -165,7 +165,7 @@ impl Reader {
                     print_styled!(out, "{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
             }
-            write!(out, "   ").unwrap();
+            uwrite!(out, "   ");
             for j in 0..16 {
                 if i + j >= offset + size || i + j >= self.len() {
                     break;
@@ -178,7 +178,7 @@ impl Reader {
                     print_styled!(out, ".", hex_ascii);
                 }
             }
-            writeln!(out).unwrap();
+            uwriteln!(out);
             i += 16;
             if i >= offset + size || i >= self.len() {
                 break;

@@ -10,6 +10,26 @@ pub fn require(predicate: bool, err: &str) -> Result<(), Box<dyn Error>> {
     if predicate { Ok(()) } else { Err(err.into()) }
 }
 
+// Currently we only write to io::stdout()and to vectors neither of which will fail so it
+// should be OK to just call unwrap. But we don't want to litter our code with unwrap so
+// we use these macros to prevent that.
+macro_rules! uwrite {
+    ($out:ident, $($t:tt)*) => {{
+        write!($out, $($t)*).unwrap();
+    }};
+}
+pub(crate) use uwrite;
+
+macro_rules! uwriteln {
+    ($out:ident) => {{
+        writeln!($out).unwrap();
+    }};
+    ($out:ident, $($t:tt)*) => {{
+        writeln!($out, $($t)*).unwrap();
+    }};
+}
+pub(crate) use uwriteln;
+
 pub fn warn(mesg: &str) {
     eprintln!("{}", mesg.warn());
 }
