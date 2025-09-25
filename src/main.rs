@@ -54,7 +54,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         Bt => commands::backtrace(io::stdout(), &files),
         Elf(info) => match info.action {
             ElfAction::Debug(args) => commands::info_debug(&files, &args),
-            ElfAction::Header(args) => commands::info_header(&files, &args),
+            ElfAction::Header(args) => commands::info_header(io::stdout(), &files, &args),
             ElfAction::Loads(args) => commands::info_loads(&files, &args),
             ElfAction::Notes(args) => commands::info_notes(&files, &args),
             ElfAction::Relocations(args) => commands::info_relocations(&files, &args),

@@ -336,74 +336,7 @@ fn byte_str_to_vec(str: &str) -> Result<Vec<u8>, Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    macro_rules! debug_results {
-        ($v:ident, $f:ident) => {
-            let paths = vec![
-                std::path::PathBuf::from("cores/shopping-debug/app-debug"),
-                std::path::PathBuf::from("cores/shopping-debug/app-debug.core"),
-            ];
-            let files = ElfFiles::new(paths).unwrap();
-            $f(&mut $v, &files);
-        };
-        ($v:ident, $f:ident, $a:expr) => {
-            let paths = vec![
-                std::path::PathBuf::from("cores/shopping-debug/app-debug"),
-                std::path::PathBuf::from("cores/shopping-debug/app-debug.core"),
-            ];
-            let files = ElfFiles::new(paths).unwrap();
-            $f(&mut $v, &files, $a);
-        };
-    }
-
-    macro_rules! release_results {
-        ($v:ident, $f:ident) => {
-            let paths = vec![
-                std::path::PathBuf::from("cores/shopping-release/app-release"),
-                std::path::PathBuf::from("cores/shopping-release/app-release.core"),
-            ];
-            let files = ElfFiles::new(paths).unwrap();
-            $f(&mut $v, &files);
-        };
-        ($v:ident, $f:ident, $a:expr) => {
-            let paths = vec![
-                std::path::PathBuf::from("cores/shopping-release/app-release"),
-                std::path::PathBuf::from("cores/shopping-release/app-release.core"),
-            ];
-            let files = ElfFiles::new(paths).unwrap();
-            $f(&mut $v, &files, $a);
-        };
-    }
-
-    // macro so insta crate uses a sensible name for the snapshot file
-    macro_rules! do_test {
-        ($f:ident, debug_only) => {
-            // TODO for commands with args will need a variant of this that takes an arg
-            let mut v: Vec<u8> = Vec::new();
-            debug_results!(v, $f);
-
-            let s = String::from_utf8(v).unwrap();
-            insta::assert_snapshot!(s);
-        };
-        ($f:ident) => {
-            let mut v: Vec<u8> = Vec::new();
-            debug_results!(v, $f);
-            writeln!(&mut v).unwrap();
-            release_results!(v, $f);
-
-            let s = String::from_utf8(v).unwrap();
-            insta::assert_snapshot!(s);
-        };
-        ($f:ident, $a:expr) => {
-            let mut v: Vec<u8> = Vec::new();
-            debug_results!(v, $f, $a);
-            writeln!(&mut v).unwrap();
-            release_results!(v, $f, $a);
-
-            let s = String::from_utf8(v).unwrap();
-            insta::assert_snapshot!(s);
-        };
-    }
+    use crate::utils::{debug_results, do_test, release_results};
 
     #[test]
     fn bt() {

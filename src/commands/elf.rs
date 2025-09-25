@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
 use crate::debug::SymbolIndex;
@@ -62,7 +64,7 @@ pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
     }
 }
 
-pub fn info_header(files: &ElfFiles, args: &ExplainArgs) {
+pub fn info_header(mut out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
     let mut b = SimpleTableBuilder::new();
 
     let file = get_file(files, args.exe);
@@ -136,7 +138,7 @@ pub fn info_header(files: &ElfFiles, args: &ExplainArgs) {
         file.header.string_table_index,
         "section index containing the string table"
     );
-    b.println(args.explain);
+    b.writeln(out, args.explain);
 }
 
 pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
@@ -468,5 +470,20 @@ fn index_to_str(file: &ElfFile, index: SymbolIndex) -> String {
             .unwrap_or("bad section index".to_string()),
         SymbolIndex::Undef => "".to_string(),
         SymbolIndex::XIndex => "not implemented".to_string(), // TODO
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::{debug_results, do_test, release_results};
+
+    #[test]
+    fn core_header() {
+        let args = ExplainArgs {
+            exe: false,
+            explain: false,
+        };
+        do_test!(info_header, &args);
     }
 }

@@ -1,4 +1,6 @@
 //! Helpers for building tables using the tabled crate.
+use std::io::Write;
+
 use crate::utils::Styling;
 use tabled::{
     builder::Builder,
@@ -185,6 +187,15 @@ impl SimpleTableBuilder {
         if explain {
             println!();
             println!("{}", self.explain_str());
+        }
+    }
+
+    pub fn writeln(&self, mut out: impl Write, explain: bool) {
+        writeln!(out, "{}", self.table_str()).unwrap();
+
+        if explain {
+            writeln!(out).unwrap();
+            writeln!(out, "{}", self.explain_str()).unwrap();
         }
     }
 
