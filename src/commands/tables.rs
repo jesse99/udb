@@ -1,7 +1,7 @@
 //! Helpers for building tables using the tabled crate.
-use std::io::Write;
-
 use crate::utils::Styling;
+use crate::utils::uwriteln;
+use std::io::Write;
 use tabled::{
     builder::Builder,
     settings::{Alignment, Padding, Style, object::Columns},
@@ -78,11 +78,11 @@ impl TableBuilder {
     }
 
     pub fn writeln(&self, mut out: impl Write, titles: bool, explain: bool) {
-        writeln!(out, "{}", self.table_str(titles)).unwrap();
+        uwriteln!(out, "{}", self.table_str(titles));
 
         if explain {
-            writeln!(out).unwrap();
-            writeln!(out, "{}", self.explain_str()).unwrap();
+            uwriteln!(out);
+            uwriteln!(out, "{}", self.explain_str());
         }
     }
 
@@ -200,11 +200,11 @@ impl SimpleTableBuilder {
     }
 
     pub fn writeln(&self, mut out: impl Write, explain: bool) {
-        writeln!(out, "{}", self.table_str()).unwrap();
+        uwriteln!(out, "{}", self.table_str());
 
         if explain {
-            writeln!(out).unwrap();
-            writeln!(out, "{}", self.explain_str()).unwrap();
+            uwriteln!(out);
+            uwriteln!(out, "{}", self.explain_str());
         }
     }
 
