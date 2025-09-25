@@ -23,7 +23,6 @@ pub fn generate_style_file() {
     }
 }
 
-#[cfg(not(test))]
 macro_rules! print_styled {
     ($format:expr, $style:ident) => {
         let s = format!($format).$style();
@@ -48,34 +47,6 @@ macro_rules! print_styled {
     };
     ($out:ident, $format:expr, $style:ident, $arg1:expr, $arg2:expr) => {
         let s = format!($format, $arg1, $arg2).$style();
-        write!($out, "{s}").unwrap();
-    };
-}
-#[cfg(test)]
-macro_rules! print_styled {
-    ($format:expr, $style:ident) => {
-        let s = format!($format);
-        print!("{s}");
-    };
-    ($format:expr, $style:ident, $arg1:expr) => {
-        let s = format!($format, $arg1);
-        print!("{s}");
-    };
-    ($format:expr, $style:ident, $arg1:expr, $arg2:expr) => {
-        let s = format!($format, $arg1, $arg2);
-        print!("{s}");
-    };
-
-    ($out:ident, $format:expr, $style:ident) => {
-        let s = format!($format);
-        write!($out, "{s}").unwrap();
-    };
-    ($out:ident, $format:expr, $style:ident, $arg1:expr) => {
-        let s = format!($format, $arg1);
-        write!($out, "{s}").unwrap();
-    };
-    ($out:ident, $format:expr, $style:ident, $arg1:expr, $arg2:expr) => {
-        let s = format!($format, $arg1, $arg2);
         write!($out, "{s}").unwrap();
     };
 }
