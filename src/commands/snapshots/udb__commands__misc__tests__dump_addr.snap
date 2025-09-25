@@ -1,0 +1,5 @@
+---
+source: src/commands/misc.rs
+expression: s
+---
+63 6f 75 6e 74 00 5f 5f  63 6f 75 6e 74 00 5f 5f    count.__rseq_fla

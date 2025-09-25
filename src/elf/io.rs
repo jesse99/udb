@@ -156,7 +156,7 @@ impl Reader {
                     print_styled!(out, "{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
             }
-            print!(" ");
+            write!(out, " ").unwrap();
             for j in 0..8 {
                 if i + j + 8 >= offset + size || i + j + 8 >= self.len() {
                     print_styled!(out, "   ", hex_hex);
@@ -165,7 +165,7 @@ impl Reader {
                     print_styled!(out, "{:02x} ", hex_hex, self.read_byte(o).unwrap());
                 }
             }
-            print!("   ");
+            write!(out, "   ").unwrap();
             for j in 0..16 {
                 if i + j >= offset + size || i + j >= self.len() {
                     break;
@@ -178,7 +178,7 @@ impl Reader {
                     print_styled!(out, ".", hex_ascii);
                 }
             }
-            println!();
+            writeln!(out).unwrap();
             i += 16;
             if i >= offset + size || i >= self.len() {
                 break;

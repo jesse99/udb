@@ -1,0 +1,7 @@
+---
+source: src/commands/misc.rs
+expression: s
+---
+7ff8fc2ceb25: 63 6f 75 6e 74 00 5f 5f  63 6f 75 6e 74 00 5f 5f    count.__rseq_fla
+7ff8fc2ceb35: 67 73 00 5f 64 6c 5f 61  67 73 00 5f 64 6c 5f 61    gs._dl_allocate_
+7ff8fc2ceb45: 74 6c                                               tl

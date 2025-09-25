@@ -469,4 +469,40 @@ mod tests {
         };
         do_test!(find, &args);
     }
+
+    #[test]
+    fn dump_addr() {
+        let args = HexdumpArgs {
+            exe: false,
+            count: 16,
+            labels: HexdumpLabels::None,
+            offset: false,
+            value: 0x7ff8fc2ceb25,
+        };
+        do_test!(hexdump, &args);
+    }
+
+    #[test]
+    fn dump_offset() {
+        let args = HexdumpArgs {
+            exe: true,
+            count: 32,
+            labels: HexdumpLabels::Zero,
+            offset: true,
+            value: 0x3871,
+        };
+        do_test!(hexdump, &args);
+    }
+
+    #[test]
+    fn dump_addr_labels() {
+        let args = HexdumpArgs {
+            exe: false,
+            count: 34,
+            labels: HexdumpLabels::Addr,
+            offset: false,
+            value: 0x7ff8fc2ceb25,
+        };
+        do_test!(hexdump, &args);
+    }
 }
