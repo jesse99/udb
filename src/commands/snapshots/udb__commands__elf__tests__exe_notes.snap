@@ -1,0 +1,15 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+name  type            offset  size 
+----  ----            ------  ---- 
+GNU   Gnu(PropType0)     348    32 
+GNU   Gnu(BuildId)       378    20 
+GNU   Gnu(AbiTag)        39c    16 
+
+name  type            offset  size 
+----  ----            ------  ---- 
+GNU   Gnu(PropType0)     348    32 
+GNU   Gnu(BuildId)       378    20 
+GNU   Gnu(AbiTag)        39c    16

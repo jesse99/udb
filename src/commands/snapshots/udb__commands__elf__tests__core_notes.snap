@@ -1,0 +1,23 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+name   type            offset  size 
+----   ----            ------  ---- 
+CORE   Core(PrStatus)     594   336 
+CORE   Core(PrPsInfo)     6f8   136 
+CORE   Core(SigInfo)      794   128 
+CORE   Core(AuxV)         828   336 
+CORE   Core(File)         98c  1016 
+CORE   Core(FpRegSet)     d98   512 
+LINUX  Generic(Other)     fac   832 
+
+name   type            offset  size 
+----   ----            ------  ---- 
+CORE   Core(PrStatus)     594   336 
+CORE   Core(PrPsInfo)     6f8   136 
+CORE   Core(SigInfo)      794   128 
+CORE   Core(AuxV)         828   336 
+CORE   Core(File)         98c  1026 
+CORE   Core(FpRegSet)     da4   512 
+LINUX  Generic(Other)     fb8   832

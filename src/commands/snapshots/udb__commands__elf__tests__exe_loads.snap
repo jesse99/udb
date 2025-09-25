@@ -1,0 +1,17 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+vaddr  vbytes  flags  offset  obytes  note    
+-----  ------  -----  ------  ------  ----    
+0         698    --r       0     698  [text]  
+1000      5c5    x-r    1000     5c5          
+2000      1d8    --r    2000     1d8  [text]  
+3da8      278    -wr    2da8     268  [data]  
+
+vaddr  vbytes  flags  offset  obytes  note    
+-----  ------  -----  ------  ------  ----    
+0         648    --r       0     648  [text]  
+1000      335    x-r    1000     335          
+2000      184    --r    2000     184  [text]  
+3db8      260    -wr    2db8     258  [data]

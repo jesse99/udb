@@ -1,0 +1,55 @@
+---
+source: src/commands/elf.rs
+expression: s
+---
+vaddr             vbytes  flags  offset  obytes  note                                            
+-----             ------  -----  ------  ------  ----                                            
+55957a492000        1000    --r    2000    1000  /home/vorisek/shopping/app-debug                
+55957a493000        1000    x-r    3000       0  /home/vorisek/shopping/app-debug                
+55957a494000        1000    --r    3000       0  /home/vorisek/shopping/app-debug                
+55957a495000        1000    --r    3000    1000  /home/vorisek/shopping/app-debug                
+55957a496000        1000    -wr    4000    1000  /home/vorisek/shopping/app-debug                
+7ff8fc09a000        3000    -wr    5000    3000  [data]                                          
+7ff8fc09d000       28000    --r    8000    1000  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7ff8fc0c5000      195000    x-r    9000       0  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7ff8fc25a000       58000    --r    9000       0  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7ff8fc2b2000        1000    ---    9000       0  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7ff8fc2b3000        4000    --r    9000    4000  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7ff8fc2b7000        2000    -wr    d000    2000  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7ff8fc2b9000        d000    -wr    f000    d000  [data]                                          
+7ff8fc2cc000        2000    -wr   1c000    2000  [data]                                          
+7ff8fc2ce000        2000    --r   1e000    1000  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7ff8fc2d0000       2a000    x-r   1f000       0  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7ff8fc2fa000        b000    --r   1f000       0  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7ff8fc306000        2000    --r   1f000    2000  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7ff8fc308000        2000    -wr   21000    2000  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7fffdd394000       21000    -wr   23000   21000  [stack]                                         
+7fffdd3f3000        4000    --r   44000    4000  [text]                                          
+7fffdd3f7000        2000    x-r   48000    2000                                                  
+ffffffffff600000    1000    x--   4a000    1000                                                  
+
+vaddr             vbytes  flags  offset  obytes  note                                            
+-----             ------  -----  ------  ------  ----                                            
+55d1a7821000        1000    --r    2000    1000  /home/vorisek/shopping/app-release              
+55d1a7822000        1000    x-r    3000       0  /home/vorisek/shopping/app-release              
+55d1a7823000        1000    --r    3000       0  /home/vorisek/shopping/app-release              
+55d1a7824000        1000    --r    3000    1000  /home/vorisek/shopping/app-release              
+55d1a7825000        1000    -wr    4000    1000  /home/vorisek/shopping/app-release              
+7f9c7074a000        3000    -wr    5000    3000  [data]                                          
+7f9c7074d000       28000    --r    8000    1000  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7f9c70775000      195000    x-r    9000       0  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7f9c7090a000       58000    --r    9000       0  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7f9c70962000        1000    ---    9000       0  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7f9c70963000        4000    --r    9000    4000  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7f9c70967000        2000    -wr    d000    2000  /usr/lib/x86_64-linux-gnu/libc.so.6             
+7f9c70969000        d000    -wr    f000    d000  [data]                                          
+7f9c7097c000        2000    -wr   1c000    2000  [data]                                          
+7f9c7097e000        2000    --r   1e000    1000  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7f9c70980000       2a000    x-r   1f000       0  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7f9c709aa000        b000    --r   1f000       0  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7f9c709b6000        2000    --r   1f000    2000  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7f9c709b8000        2000    -wr   21000    2000  /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2  
+7ffdb3b63000       21000    -wr   23000   21000  [stack]                                         
+7ffdb3bcb000        4000    --r   44000    4000  [text]                                          
+7ffdb3bcf000        2000    x-r   48000    2000                                                  
+ffffffffff600000    1000    x--   4a000    1000

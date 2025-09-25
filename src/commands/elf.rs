@@ -64,7 +64,7 @@ pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
     }
 }
 
-pub fn info_header(mut out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
+pub fn info_header(out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
     let mut b = SimpleTableBuilder::new();
 
     let file = get_file(files, args.exe);
@@ -141,7 +141,7 @@ pub fn info_header(mut out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
     b.writeln(out, args.explain);
 }
 
-pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
+pub fn info_loads(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     pub fn find_file(
         files: &Option<Vec<MemoryMappedFile>>,
         vaddr: VirtualAddr,
@@ -199,10 +199,10 @@ pub fn info_loads(files: &ElfFiles, args: &TableArgs) {
         add_field!(builder, "note", note);
     }
 
-    builder.println(args.titles, args.explain);
+    builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_notes(files: &ElfFiles, args: &TableArgs) {
+pub fn info_notes(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let mut builder = TableBuilder::new();
     builder.add_col_l("name", "note namespace");
     builder.add_col_l("type", "the type of the note");
@@ -217,7 +217,7 @@ pub fn info_notes(files: &ElfFiles, args: &TableArgs) {
         add_field!(builder, "size", note.contents.size);
     }
 
-    builder.println(args.titles, args.explain);
+    builder.writeln(out, args.titles, args.explain);
 }
 
 pub fn info_relocations(files: &ElfFiles, args: &TableArgs) {
@@ -486,6 +486,7 @@ mod tests {
         };
         do_test!(info_header, &args);
     }
+
     #[test]
     fn exe_header() {
         let args = ExplainArgs {
@@ -493,5 +494,45 @@ mod tests {
             explain: false,
         };
         do_test!(info_header, &args);
+    }
+
+    #[test]
+    fn core_loads() {
+        let args = TableArgs {
+            exe: false,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_loads, &args);
+    }
+
+    #[test]
+    fn exe_loads() {
+        let args = TableArgs {
+            exe: true,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_loads, &args);
+    }
+
+    #[test]
+    fn core_notes() {
+        let args = TableArgs {
+            exe: false,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_notes, &args);
+    }
+
+    #[test]
+    fn exe_notes() {
+        let args = TableArgs {
+            exe: true,
+            explain: false,
+            titles: true,
+        };
+        do_test!(info_notes, &args);
     }
 }

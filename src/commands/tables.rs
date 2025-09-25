@@ -77,6 +77,15 @@ impl TableBuilder {
         }
     }
 
+    pub fn writeln(&self, mut out: impl Write, titles: bool, explain: bool) {
+        writeln!(out, "{}", self.table_str(titles)).unwrap();
+
+        if explain {
+            writeln!(out).unwrap();
+            writeln!(out, "{}", self.explain_str()).unwrap();
+        }
+    }
+
     // We need to preserve add_col ordering so we can't use a HashMap
     // but O(n) should be fine for tables.
     fn has_col(&self, header: &str) -> bool {

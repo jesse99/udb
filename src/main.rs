@@ -55,8 +55,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         Elf(info) => match info.action {
             ElfAction::Debug(args) => commands::info_debug(&files, &args),
             ElfAction::Header(args) => commands::info_header(io::stdout(), &files, &args),
-            ElfAction::Loads(args) => commands::info_loads(&files, &args),
-            ElfAction::Notes(args) => commands::info_notes(&files, &args),
+            ElfAction::Loads(args) => commands::info_loads(io::stdout(), &files, &args),
+            ElfAction::Notes(args) => commands::info_notes(io::stdout(), &files, &args),
             ElfAction::Relocations(args) => commands::info_relocations(&files, &args),
             ElfAction::Sections(args) => commands::info_sections(&files, &args),
             ElfAction::Segments(args) => commands::info_segments(&files, &args),
