@@ -29,42 +29,45 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
     }
 }
 
-pub fn info_debug(files: &ElfFiles, args: &ElfLineArgs) {
+pub fn elf_line(mut out: impl Write, files: &ElfFiles, args: &ElfLineArgs) {
     let file = get_file(files, true);
     match file.get_lines() {
         Some(lines) => {
             for (i, unit) in lines.units.iter().enumerate() {
-                println!("compilation unit {i}:");
-                println!("   sources:");
+                writeln!(out, "compilation unit {i}:").unwrap();
+                writeln!(out, "   sources:").unwrap();
                 for source in unit.source_files.iter() {
                     match source.length {
-                        Some(n) => println!("      {}/{} {} bytes", source.dir, source.file, n),
-                        None => println!("      {}/{}", source.dir, source.file),
+                        Some(n) => {
+                            writeln!(out, "      {}/{} {} bytes", source.dir, source.file, n)
+                                .unwrap()
+                        }
+                        None => writeln!(out, "      {}/{}", source.dir, source.file).unwrap(),
                     }
                 }
-                println!("   include paths:");
+                writeln!(out, "   include paths:").unwrap();
                 for i in unit.include_paths.iter() {
-                    println!("      {}", i);
+                    writeln!(out, "      {}", i).unwrap();
                 }
             }
-            println!("files:");
+            writeln!(out, "files:").unwrap();
             for f in lines.files.iter() {
-                println!("   {}", f);
+                writeln!(out, "   {}", f).unwrap();
             }
-            println!("relative addresses:");
+            writeln!(out, "relative addresses:").unwrap();
             for (a, v) in lines.lines.iter().take(args.max_lines) {
                 let f = &lines.files.get(v.file);
-                println!("   0x{:x}  {}:{}:{}", a.start.0, f, v.line, v.column);
+                writeln!(out, "   0x{:x}  {}:{}:{}", a.start.0, f, v.line, v.column).unwrap();
             }
             if lines.lines.len() > args.max_lines {
-                println!("   ...");
+                writeln!(out, "   ...").unwrap();
             }
         }
-        None => println!("Couldn't find .debug_line section"),
+        None => writeln!(out, "Couldn't find .debug_line section").unwrap(),
     }
 }
 
-pub fn info_header(out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
+pub fn elf_header(out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
     let mut b = SimpleTableBuilder::new();
 
     let file = get_file(files, args.exe);
@@ -141,7 +144,7 @@ pub fn info_header(out: impl Write, files: &ElfFiles, args: &ExplainArgs) {
     b.writeln(out, args.explain);
 }
 
-pub fn info_loads(out: impl Write, files: &ElfFiles, args: &TableArgs) {
+pub fn elf_loads(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     pub fn find_file(
         files: &Option<Vec<MemoryMappedFile>>,
         vaddr: VirtualAddr,
@@ -202,7 +205,7 @@ pub fn info_loads(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_notes(out: impl Write, files: &ElfFiles, args: &TableArgs) {
+pub fn elf_notes(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let mut builder = TableBuilder::new();
     builder.add_col_l("name", "note namespace");
     builder.add_col_l("type", "the type of the note");
@@ -220,7 +223,7 @@ pub fn info_notes(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_relocations(out: impl Write, files: &ElfFiles, args: &TableArgs) {
+pub fn elf_relocations(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     // TODO probably should use an arg w/o --exe
     let mut builder = TableBuilder::new();
     builder.add_col_r("symbol", "name of the symbol to relocate");
@@ -296,7 +299,7 @@ pub fn info_relocations(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_sections(out: impl Write, files: &ElfFiles, args: &TableArgs) {
+pub fn elf_sections(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
     let sections = file.get_sections();
 
@@ -345,7 +348,7 @@ pub fn info_sections(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     builder.writeln(out, args.titles, args.explain);
 }
 
-pub fn info_segments(out: impl Write, files: &ElfFiles, args: &TableArgs) {
+pub fn elf_segments(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let file = get_file(files, args.exe);
     let segments = ElfFile::find_segments(file.reader, &file.header);
 
@@ -385,7 +388,7 @@ pub fn info_segments(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     }
 }
 
-pub fn info_strings(mut out: impl Write, files: &ElfFiles, args: &StringsArgs) {
+pub fn elf_strings(mut out: impl Write, files: &ElfFiles, args: &StringsArgs) {
     let file = get_file(files, true);
     let num_sections = file.get_sections().len();
 
@@ -411,7 +414,7 @@ pub fn info_strings(mut out: impl Write, files: &ElfFiles, args: &StringsArgs) {
     }
 }
 
-pub fn info_symbols(out: impl Write, files: &ElfFiles, args: &TableArgs) {
+pub fn elf_symbols(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     let mut builder = TableBuilder::new();
     builder.add_col_r("index", "symbol index");
     builder.add_col_l("name", "the symbol name");
@@ -483,7 +486,7 @@ mod tests {
             exe: false,
             explain: false,
         };
-        do_test!(info_header, &args);
+        do_test!(elf_header, &args);
     }
 
     #[test]
@@ -492,7 +495,7 @@ mod tests {
             exe: true,
             explain: false,
         };
-        do_test!(info_header, &args);
+        do_test!(elf_header, &args);
     }
 
     #[test]
@@ -502,7 +505,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_loads, &args);
+        do_test!(elf_loads, &args);
     }
 
     #[test]
@@ -512,7 +515,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_loads, &args);
+        do_test!(elf_loads, &args);
     }
 
     #[test]
@@ -522,7 +525,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_notes, &args);
+        do_test!(elf_notes, &args);
     }
 
     #[test]
@@ -532,7 +535,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_notes, &args);
+        do_test!(elf_notes, &args);
     }
 
     #[test]
@@ -543,7 +546,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_relocations, &args);
+        do_test!(elf_relocations, &args);
     }
 
     #[test]
@@ -554,7 +557,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_sections, &args);
+        do_test!(elf_sections, &args);
     }
 
     #[test]
@@ -564,7 +567,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_segments, &args);
+        do_test!(elf_segments, &args);
     }
 
     #[test]
@@ -574,7 +577,7 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_segments, &args);
+        do_test!(elf_segments, &args);
     }
 
     #[test]
@@ -584,7 +587,7 @@ mod tests {
             index: None,
             max_results: 10,
         };
-        do_test!(info_strings, &args);
+        do_test!(elf_strings, &args);
     }
 
     #[test]
@@ -594,7 +597,7 @@ mod tests {
             index: Some(35),
             max_results: 4,
         };
-        do_test!(info_strings, &args);
+        do_test!(elf_strings, &args);
     }
 
     #[test]
@@ -604,6 +607,12 @@ mod tests {
             explain: false,
             titles: true,
         };
-        do_test!(info_symbols, &args);
+        do_test!(elf_symbols, &args);
+    }
+
+    #[test]
+    fn line() {
+        let args = ElfLineArgs { max_lines: 5 };
+        do_test!(elf_line, &args);
     }
 }
