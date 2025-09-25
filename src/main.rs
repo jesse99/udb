@@ -53,8 +53,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     rl.repl(|repl: Repl| match repl.command {
         Bt => commands::backtrace(io::stdout(), &files),
         Elf(info) => match info.action {
-            ElfAction::Debug(args) => commands::info_debug(&files, &args),
             ElfAction::Header(args) => commands::info_header(io::stdout(), &files, &args),
+            ElfAction::Line(args) => commands::info_debug(&files, &args),
             ElfAction::Loads(args) => commands::info_loads(io::stdout(), &files, &args),
             ElfAction::Notes(args) => commands::info_notes(io::stdout(), &files, &args),
             ElfAction::Relocations(args) => commands::info_relocations(io::stdout(), &files, &args),

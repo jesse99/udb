@@ -7,7 +7,7 @@ use crate::elf::{
     LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, StringIndex,
     VirtualAddr,
 };
-use crate::repl::{DebugArgs, ExplainArgs, StringsArgs};
+use crate::repl::{ElfLineArgs, ExplainArgs, StringsArgs};
 use crate::utils;
 use crate::utils::Styling;
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
@@ -29,7 +29,7 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
     }
 }
 
-pub fn info_debug(files: &ElfFiles, args: &DebugArgs) {
+pub fn info_debug(files: &ElfFiles, args: &ElfLineArgs) {
     let file = get_file(files, true);
     match file.get_lines() {
         Some(lines) => {

@@ -46,11 +46,11 @@ pub struct InfoCommand {
 
 #[derive(Subcommand)]
 pub enum ElfAction {
-    /// Show debug info
-    Debug(DebugArgs),
-
     /// Show ELF header
     Header(ExplainArgs),
+
+    /// Show low level address to line tables
+    Line(ElfLineArgs),
 
     /// Show ELF load segments
     Loads(TableArgs),
@@ -130,7 +130,7 @@ pub struct FindArgs {
 }
 
 #[derive(Args)]
-pub struct DebugArgs {
+pub struct ElfLineArgs {
     /// Number of lines to print in the address => line table.
     #[arg(short, long)]
     #[arg(default_value_t = 20)]
