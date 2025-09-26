@@ -178,6 +178,13 @@ impl ElfFile {
         &self.sections
     }
 
+    pub fn find_section_named(&self, name: &str) -> Option<&SectionHeader> {
+        self.sections.iter().find(|h| {
+            self.find_default_string(h.name)
+                .map_or(false, |x| x == name)
+        })
+    }
+
     pub fn get_memory_mapped_files(&self) -> &Option<Vec<MemoryMappedFile>> {
         fn get_files(s: &mut Stream) -> Result<Vec<MemoryMappedFile>, Box<dyn Error>> {
             // For some reason files get mapped in multiple times, e.g.

@@ -46,6 +46,9 @@ pub struct InfoCommand {
 
 #[derive(Subcommand)]
 pub enum ElfAction {
+    /// Show ELF .debug_abbrev section
+    Abbreviations(EntriesArgs),
+
     /// Show ELF header
     Header(ExplainArgs),
 
@@ -127,6 +130,14 @@ pub struct FindArgs {
     /// Max number of results to report, 0 for unlimited
     #[arg(short, long, default_value_t = 10, requires = "filter")]
     pub max_results: usize,
+}
+
+#[derive(Args)]
+pub struct EntriesArgs {
+    /// Maximum number of entries to print, 0 for unlimited.
+    #[arg(short, long)]
+    #[arg(default_value_t = 20)]
+    pub max_entries: usize,
 }
 
 #[derive(Args)]

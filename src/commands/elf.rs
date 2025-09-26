@@ -1,16 +1,15 @@
-use std::io::Write;
-
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
-use crate::debug::SymbolIndex;
+use crate::debug::{Abbreviation, SymbolIndex};
 use crate::elf::{
-    LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, StringIndex,
+    LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, Stream, StringIndex,
     VirtualAddr,
 };
-use crate::repl::{ElfLineArgs, ExplainArgs, StringsArgs};
+use crate::repl::{ElfLineArgs, EntriesArgs, ExplainArgs, StringsArgs};
 use crate::utils;
 use crate::utils::{Styling, uwriteln};
 use crate::{elf::ElfFile, elf::ElfFiles, repl::TableArgs};
+use std::io::Write;
 
 fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
     if exe {
@@ -26,6 +25,41 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
             Some(file) => file,
             None => files.exe.as_ref().unwrap(),
         }
+    }
+}
+
+pub fn elf_abbreviations(mut out: impl Write, files: &ElfFiles, args: &EntriesArgs) {
+    fn print_abbrev(mut out: impl Write, count: usize, a: &Abbreviation) {
+        uwriteln!(out, "abbrev {count}");
+        uwriteln!(out, "   tag: {:?}", a.tag);
+        uwriteln!(out, "   has_children: {}", a.has_children);
+        for at in a.attrs.iter() {
+            uwriteln!(out, "   {:?} {:?}", at.name, at.encoding);
+        }
+    }
+
+    let file = get_file(files, true);
+    if let Some(section) = file.find_section_named(".debug_abbrev") {
+        let mut stream = Stream::new(file.reader, section.obytes.start);
+        let mut count = 0;
+        loop {
+            if stream.offset + 3 >= section.obytes.end() {
+                break;
+            }
+            match Abbreviation::new(&mut stream) {
+                Ok(a) => {
+                    if args.max_entries > 0 && count >= args.max_entries {
+                        uwriteln!(out, "...");
+                        break;
+                    }
+                    count += 1;
+                    print_abbrev(&mut out, count, &a);
+                }
+                Err(e) => uwriteln!(out, "failed to read abbrev: {e}"),
+            }
+        }
+    } else {
+        uwriteln!(out, "couldn't find section .debug_abbrev");
     }
 }
 

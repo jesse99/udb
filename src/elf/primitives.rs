@@ -20,7 +20,7 @@ pub struct VirtualAddr(pub u64);
 /// An address in an exe file. These will be relative to a memory mapped segment in the
 /// core file.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Ord, PartialOrd)]
-pub struct RelativeAddr(pub u64);
+pub struct RelativeAddr(pub u64); // TODO can we make this 32 bits?
 
 /// A range of bytes that can be addressed using either offsets into an ELF file or
 /// virtual addresses. In general bytes can always be addressed using offsets and bytes

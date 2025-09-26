@@ -9,8 +9,6 @@ use std::{collections::HashMap, error::Error};
 
 key16!(FilesKey);
 
-// TODO may want a RelativeAddress type here, these can probably be 32 bits
-
 /// Used to associate relative addresses to line numbers within a source file.
 pub struct LineInfo {
     /// The source files used to build the exe or lib.
@@ -572,53 +570,6 @@ impl Opcode {
 //     Vendor(u32),
 // }
 
-// #[derive(Clone, Copy, Debug, PartialEq, Eq)] // 7.5.6
-// pub enum FormEncoding {
-//     Addr,      // 0x01 address
-//     Block2,    // 0x03 block
-//     Block4,    // 0x04 block
-//     Data2,     // 0x05 constant
-//     Data4,     // 0x06 constant
-//     Data8,     // 0x07 constant
-//     String,    // 0x08 string
-//     Block,     // 0x09 block
-//     Block1,    // 0x0a block
-//     Data1,     // 0x0b constant
-//     Flag,      // 0x0c flag
-//     Sdata,     // 0x0d constant
-//     Strp,      // 0x0e string
-//     Udata,     // 0x0f constant
-//     RefAddr,   // 0x10 reference
-//     Ref1,      // 0x11 reference
-//     Ref2,      // 0x12 reference
-//     Ref4,      // 0x13 reference
-//     Ref8,      // 0x14 reference
-//     RefUdata,  // 0x15 reference
-//     Indirect,  // 0x16 (see Section 7.5.3 on page 203)
-//     SecOffset, // 0x17 addrptr, lineptr, loclist, loclistsptr, macptr, rnglist, rnglistsptr, stroffsetsptr
-//     Exprloc,   // 0x18 exprloc
-//     FlagPresent, //0x19 flag
-//                // Strx,      // 0x1a string (version 5)
-//                // Addrx,     // 0x1b address (version 5)
-//                // RefSup4,   // 0x1c reference (version 5)
-//                // StrpSup,   // 0x1d string (version 5)
-//                // Data16,    // 0x1e constant (version 5)
-//                // LineStrp,  // 0x1f string (version 5)
-//                // RefSig8,   // 0x20 reference (version 5)
-//                // ImplicitConst, // 0x21 constant (version 5)
-//                // Loclistx,  // 0x22 loclist (version 5)
-//                // Rnglistx,  // 0x23 rnglist (version 5)
-//                // RefSup8,   // 0x24 reference (version 5)
-//                // Strx1,     // 0x25 string (version 5)
-//                // Strx2,     // 0x26 string (version 5)
-//                // Strx3,     // 0x27 string (version 5)
-//                // Strx4,     // 0x28 string (version 5)
-//                // Addrx1,    // 0x29 address (version 5)
-//                // Addrx2,    // 0x2a address (version 5)
-//                // Addrx3,    // 0x2b address (version 5)
-//                // Addrx4,    // 0x2c address (version 5)
-// }
-
 // impl ContentType {
 //     fn from_u32(value: u32) -> Self {
 //         match value {
@@ -628,38 +579,6 @@ impl Opcode {
 //             4 => ContentType::Size,
 //             5 => ContentType::Md5Sum,
 //             _ => ContentType::Vendor(value),
-//         }
-//     }
-// }
-
-// impl FormEncoding {
-//     fn from_u32(value: u32) -> Result<Self, Box<dyn Error>> {
-//         match value {
-//             0x01 => Ok(FormEncoding::Addr),
-//             0x03 => Ok(FormEncoding::Block2),
-//             0x04 => Ok(FormEncoding::Block4),
-//             0x05 => Ok(FormEncoding::Data2),
-//             0x06 => Ok(FormEncoding::Data4),
-//             0x07 => Ok(FormEncoding::Data8),
-//             0x08 => Ok(FormEncoding::String),
-//             0x09 => Ok(FormEncoding::Block),
-//             0x0a => Ok(FormEncoding::Block1),
-//             0x0b => Ok(FormEncoding::Data1),
-//             0x0c => Ok(FormEncoding::Flag),
-//             0x0d => Ok(FormEncoding::Sdata),
-//             0x0e => Ok(FormEncoding::Strp),
-//             0x0f => Ok(FormEncoding::Udata),
-//             0x10 => Ok(FormEncoding::RefAddr),
-//             0x11 => Ok(FormEncoding::Ref1),
-//             0x12 => Ok(FormEncoding::Ref2),
-//             0x13 => Ok(FormEncoding::Ref4),
-//             0x14 => Ok(FormEncoding::Ref8),
-//             0x15 => Ok(FormEncoding::RefUdata),
-//             0x16 => Ok(FormEncoding::Indirect),
-//             0x17 => Ok(FormEncoding::SecOffset),
-//             0x18 => Ok(FormEncoding::Exprloc),
-//             0x19 => Ok(FormEncoding::FlagPresent),
-//             _ => Err(format!("unknown form encoding: {value}").into()),
 //         }
 //     }
 // }
@@ -679,18 +598,3 @@ fn decode_u32(stream: &mut Stream) -> Result<u32, Box<dyn Error>> {
     }
     Ok(result)
 }
-
-// /// LEB128 encoded
-// fn decode_u64(stream: &mut Stream) -> Result<u64, Box<dyn Error>> {
-//     let mut result = 0;
-//     let mut shift = 0;
-//     loop {
-//         let byte = stream.read_byte()? as u64;
-//         result |= (byte & 0x7F) << shift;
-//         if (byte & 0x80) == 0 {
-//             break;
-//         }
-//         shift += 7;
-//     }
-//     Ok(result)
-// }
