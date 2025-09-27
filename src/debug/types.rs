@@ -51,6 +51,20 @@ impl Types {
         Ok(unit_length)
     }
 
+    // Think the way that this works is that we have:
+    //    abbev code - 1-based index into abrevs
+    //    values - corresponds to attribute names/encodings in the abbrev
+    // if has_children then
+    //    next entries are children
+    //    until get a null entry
+    // else
+    //    next entry is a sibling
+    //
+    // first entry uses these encodings:
+    //     DW_FORM_addr
+    //     DW_FORM_data1
+    //     DW_FORM_data4
+    //     DW_FORM_strp
     fn parse_attrs(stream: &mut Stream, len: u64) {}
 }
 
