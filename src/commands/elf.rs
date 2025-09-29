@@ -1,6 +1,6 @@
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
-use crate::debug::{Abbreviation, SymbolIndex};
+use crate::debug::{Abbreviations, ParseTypes, SymbolIndex, Type};
 use crate::elf::{
     LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, Stream, StringIndex,
     VirtualAddr,
@@ -29,7 +29,7 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
 }
 
 pub fn elf_abbreviations(mut out: impl Write, files: &ElfFiles, args: &EntriesArgs) {
-    fn print_abbrev(mut out: impl Write, count: usize, a: &Abbreviation) {
+    fn print_abbrev(mut out: impl Write, count: usize, a: &Abbreviations) {
         uwriteln!(out, "abbrev {count}");
         uwriteln!(out, "   tag: {:?}", a.tag);
         uwriteln!(out, "   has_children: {}", a.has_children);
@@ -39,27 +39,14 @@ pub fn elf_abbreviations(mut out: impl Write, files: &ElfFiles, args: &EntriesAr
     }
 
     let file = get_file(files, true);
-    if let Some(section) = file.find_section_named(".debug_abbrev") {
-        let mut stream = Stream::new(file.reader, section.obytes.start);
-        let mut count = 0;
-        loop {
-            if stream.offset + 3 >= section.obytes.end() {
-                break;
-            }
-            match Abbreviation::new(&mut stream) {
-                Ok(a) => {
-                    if args.max_entries > 0 && count >= args.max_entries {
-                        uwriteln!(out, "...");
-                        break;
-                    }
-                    count += 1;
-                    print_abbrev(&mut out, count, &a);
-                }
-                Err(e) => uwriteln!(out, "failed to read abbrev: {e}"),
-            }
+    let mut count = 0;
+    for a in file.find_abbreviations().iter() {
+        if args.max_entries > 0 && count >= args.max_entries {
+            uwriteln!(out, "...");
+            break;
         }
-    } else {
-        uwriteln!(out, "couldn't find section .debug_abbrev");
+        count += 1;
+        print_abbrev(&mut out, count, a);
     }
 }
 
@@ -494,6 +481,35 @@ pub fn elf_symbols(out: impl Write, files: &ElfFiles, args: &TableArgs) {
     }
 
     builder.writeln(out, args.titles, args.explain);
+}
+
+pub fn elf_types(mut out: impl Write, files: &ElfFiles, args: &EntriesArgs) {
+    fn print_type(out: &mut dyn Write, t: &Type, depth: usize) {
+        let prefix = " ".repeat(3 * depth);
+        uwriteln!(out, "{prefix}{:?}", t.tag);
+        for a in t.attrs.iter() {
+            uwriteln!(out, "{prefix}{a:?}");
+        }
+        for c in t.children.iter() {
+            print_type(out, c, depth + 1);
+        }
+    }
+
+    let file = get_file(files, true);
+    match ParseTypes::new(file) {
+        Ok(parser) => {
+            let types = parser.parse();
+            for (count, t) in types.iter().enumerate() {
+                if args.max_entries > 0 && count >= args.max_entries {
+                    uwriteln!(out, "...");
+                    break;
+                }
+                print_type(&mut out, t, 0);
+                uwriteln!(out);
+            }
+        }
+        Err(e) => uwriteln!(out, "error parsing .debug_info: {e}"),
+    }
 }
 
 fn index_to_str(file: &ElfFile, index: SymbolIndex) -> String {

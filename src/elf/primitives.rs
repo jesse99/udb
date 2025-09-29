@@ -1,3 +1,5 @@
+use crate::elf::Reader;
+use std::fmt;
 use std::ops::{Add, AddAssign, Sub};
 
 /// Index into the section table.
@@ -34,36 +36,123 @@ where
     pub size: usize,
 }
 
-// /// Points to a null-terminated string with an unspecified encoding in an ELF file. To
-// /// avoid allocations we avoid trying to convert these to a String.
-// #[derive(Copy, Clone)]
-// pub struct StringView {
-//     pub reader: &'static Reader,
-//     pub offset: Offset,
-//     pub len: usize,
-// }
+/// Points to a null-terminated string with an unspecified encoding in an ELF file. To
+/// avoid allocations we avoid trying to convert these to a String.
+#[derive(Copy, Clone)]
+pub struct StringView {
+    reader: &'static Reader,
+    offset: Offset,
+}
 
-// impl StringView {
-//     pub fn new(
-//         reader: &'static Reader,
-//         offset: Offset,
-//     ) -> Result<Self, Box<dyn std::error::Error>> {
-//         let mut len = 0;
-//         loop {
-//             let byte = reader.read_byte(offset + len)?;
-//             if byte == 0 {
-//                 break;
-//             }
-//             len += 1;
-//         }
+impl StringView {
+    pub fn new(reader: &'static Reader, offset: Offset) -> Self {
+        StringView { reader, offset }
+    }
 
-//         Ok(StringView {
-//             reader,
-//             offset,
-//             len: len as usize,
-//         })
-//     }
-// }
+    // pub fn new(
+    //     reader: &'static Reader,
+    //     offset: Offset,
+    // ) -> Result<Self, Box<dyn std::error::Error>> {
+    //     let mut len = 0;
+    //     loop {
+    //         let byte = reader.read_byte(offset + len)?;
+    //         if byte == 0 {
+    //             break;
+    //         }
+    //         len += 1;
+    //     }
+
+    //     Ok(StringView {
+    //         reader,
+    //         offset,
+    //         len: len as usize,
+    //     })
+    // }
+}
+
+impl StringView {
+    // Used when we try to print a string and discover that it is not utf-8. We can't
+    // assume that the file encoding matches whatever the user is using so we just print
+    // a '?' for high ASCII characters (and, in general, ELF files don't describe string
+    // encodings).
+    fn write_ascii(&self, f: &mut fmt::Formatter, mut i: Offset) -> fmt::Result {
+        loop {
+            match self.reader.read_byte(i) {
+                Ok(byte) => {
+                    if byte == 0 {
+                        break;
+                    }
+                    if byte <= 0x7f {
+                        write!(f, "{}", byte as char)?;
+                    } else {
+                        write!(f, "?")?;
+                    }
+                    i = i + 1;
+                }
+                Err(_) => {
+                    write!(f, "[bad read]")?;
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl fmt::Debug for StringView {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{self}")
+    }
+}
+
+impl fmt::Display for StringView {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut i = self.offset;
+        loop {
+            match self.reader.read_byte(i) {
+                Ok(byte) => {
+                    if byte == 0 {
+                        break;
+                    }
+                    if byte <= 0x7f {
+                        write!(f, "{}", byte as char)?;
+                        i = i + 1;
+                    } else {
+                        let len = if byte & 0b1111_0000 == 0b1111_0000 {
+                            4
+                        } else if byte & 0b1110_0000 == 0b1110_0000 {
+                            3
+                        } else if byte & 0b1100_0000 == 0b1100_0000 {
+                            2
+                        } else {
+                            self.write_ascii(f, i)?;
+                            break;
+                        };
+                        match self.reader.slice(i, len) {
+                            Ok(v) => match str::from_utf8(v) {
+                                Ok(s) => write!(f, "{s}")?,
+                                Err(_) => {
+                                    self.write_ascii(f, i)?;
+                                    break;
+                                }
+                            },
+                            Err(_) => {
+                                write!(f, "[bad slice]")?;
+                                break;
+                            }
+                        }
+                        i = i + len as i64;
+                    }
+                }
+                Err(_) => {
+                    write!(f, "[bad read]")?;
+                    break;
+                }
+            }
+        }
+        Ok(())
+    }
+}
 
 impl Bytes<Offset> {
     pub fn from_raw(start: u64, size: usize) -> Self {

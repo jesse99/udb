@@ -5,7 +5,7 @@ use crate::{
 use std::error::Error;
 
 /// This determines how values are encoded into the .debug_info section.
-pub struct Abbreviation {
+pub struct Abbreviations {
     /// DW_TAG_compile_unit, DW_TAG_typedef, DW_TAG_base_type, etc
     pub tag: Tag,
 
@@ -15,15 +15,15 @@ pub struct Abbreviation {
 
     /// The type of an attribute in a .debug_info entry along with how the associated
     /// value is encoded.
-    pub attrs: Vec<Attribute>,
+    pub attrs: Vec<AttributeEncoding>,
 }
 
-pub struct Attribute {
+pub struct AttributeEncoding {
     pub name: AttributeName,
     pub encoding: FormEncoding,
 }
 
-impl Abbreviation {
+impl Abbreviations {
     pub fn new(stream: &mut Stream) -> Result<Self, Box<dyn Error>> {
         let _code = decode_u64(stream)?; // 1-based index into the abbrev table
 
@@ -34,25 +34,21 @@ impl Abbreviation {
         let mut attrs = Vec::new();
         loop {
             let name = decode_u64(stream)?;
-            if name == 0 {
+            let encoding = decode_u64(stream)?;
+            if name == 0 && encoding == 0 {
                 break;
             }
-            let name = AttributeName::from_u64(name)?;
 
-            let encoding = decode_u64(stream)?;
+            let name = AttributeName::from_u64(name)?;
             let encoding = FormEncoding::from_u64(encoding)?;
-            attrs.push(Attribute { name, encoding })
+            attrs.push(AttributeEncoding { name, encoding })
         }
-        match stream.read_byte() {
-            Ok(0) => (),
-            Ok(b) => {
-                return Err(
-                    format!("expected 0 byte to end abbrev entry, but found 0x{b:x}").into(),
-                );
-            }
+        match stream.peek_byte() {
+            Ok(0) => _ = stream.read_byte()?, // ends a compilation unit
+            Ok(_) => (),
             Err(e) => return Err(e),
         }
-        Ok(Abbreviation {
+        Ok(Abbreviations {
             tag,
             has_children,
             attrs,

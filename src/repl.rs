@@ -75,6 +75,9 @@ pub enum ElfAction {
 
     /// Show symbols
     Symbols(TableArgs),
+
+    /// Show ELF .debug_info section
+    Types(EntriesArgs),
 }
 
 #[derive(Subcommand)]

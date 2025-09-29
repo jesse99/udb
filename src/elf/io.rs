@@ -197,6 +197,11 @@ impl Stream {
         Stream { reader, offset }
     }
 
+    pub fn peek_byte(&mut self) -> Result<u8, Box<dyn Error>> {
+        let byte = self.reader.read_byte(self.offset)?;
+        Ok(byte)
+    }
+
     pub fn read_byte(&mut self) -> Result<u8, Box<dyn Error>> {
         let byte = self.reader.read_byte(self.offset)?;
         self.offset = self.offset + 1;

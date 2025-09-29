@@ -65,6 +65,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             ElfAction::Segments(args) => commands::elf_segments(io::stdout(), &files, &args),
             ElfAction::Strings(args) => commands::elf_strings(io::stdout(), &files, &args),
             ElfAction::Symbols(args) => commands::elf_symbols(io::stdout(), &files, &args),
+            ElfAction::Types(args) => commands::elf_types(io::stdout(), &files, &args),
         },
         Find(args) => commands::find(io::stdout(), &files, &args),
         Info(info) => match info.action {

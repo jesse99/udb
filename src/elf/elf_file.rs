@@ -3,7 +3,7 @@ use super::{
     ElfHeader, LoadSegment, MemoryMappedFile, NoteType, PrStatus, ProgramHeader, Reader,
     SectionIndex, SegmentType, Stream,
 };
-use crate::debug::{LineInfo, SymbolTable, SymbolTableEntry};
+use crate::debug::{Abbreviations, LineInfo, SymbolTable, SymbolTableEntry};
 use crate::elf::{
     Bytes, ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, Offset, PosixSignal,
     RelativeAddr, Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, StringIndex,
@@ -460,6 +460,28 @@ impl ElfFile {
                 _ => (),
             }
         }
+    }
+
+    pub fn find_abbreviations(&self) -> Vec<Abbreviations> {
+        let mut result = Vec::new();
+        if let Some(section) = self.find_section_named(".debug_abbrev") {
+            let mut stream = Stream::new(self.reader, section.obytes.start);
+            loop {
+                if stream.offset + 3 >= section.obytes.end() {
+                    break;
+                }
+                match Abbreviations::new(&mut stream) {
+                    Ok(a) => result.push(a),
+                    Err(e) => {
+                        println!("failed to read abbrev: {e}");
+                        break;
+                    }
+                }
+            }
+        } else {
+            println!("couldn't find section .debug_abbrev");
+        }
+        result
     }
 }
 
