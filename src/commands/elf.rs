@@ -493,6 +493,7 @@ pub fn elf_types(mut out: impl Write, files: &ElfFiles, args: &EntriesArgs) {
         for c in t.children.iter() {
             print_type(out, c, depth + 1);
         }
+        uwriteln!(out);
     }
 
     let file = get_file(files, true);
@@ -505,7 +506,6 @@ pub fn elf_types(mut out: impl Write, files: &ElfFiles, args: &EntriesArgs) {
                     break;
                 }
                 print_type(&mut out, t, 0);
-                uwriteln!(out);
             }
         }
         Err(e) => uwriteln!(out, "error parsing .debug_info: {e}"),

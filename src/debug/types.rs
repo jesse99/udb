@@ -24,6 +24,56 @@ pub enum TypeLoc {
 
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
+enum Language {
+    //                         Value  Default Lower Bound
+    DW_LANG_C89,            // 0x0001 0
+    DW_LANG_C,              // 0x0002 0
+    DW_LANG_Ada83,          // 0x0003 1
+    DW_LANG_C_plus_plus,    // 0x0004 0
+    DW_LANG_Cobol74,        // 0x0005 1
+    DW_LANG_Cobol85,        // 0x0006 1
+    DW_LANG_Fortran77,      // 0x0007 1
+    DW_LANG_Fortran90,      // 0x0008 1
+    DW_LANG_Pascal83,       // 0x0009 1
+    DW_LANG_Modula2,        // 0x000a 1
+    DW_LANG_Java,           // 0x000b 0
+    DW_LANG_C99,            // 0x000c 0
+    DW_LANG_Ada95,          // 0x000d 1
+    DW_LANG_Fortran95,      // 0x000e 1
+    DW_LANG_PLI,            // 0x000f 1
+    DW_LANG_ObjC,           // 0x0010 0
+    DW_LANG_ObjC_plus_plus, // 0x0011 0
+    DW_LANG_UPC,            // 0x0012 0
+    DW_LANG_D,              // 0x0013 0
+    DW_LANG_Python,         // 0x0014 0
+    User(u16),              // 0x8000 thru 0xffff
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
+enum TypeEncoding {
+    //                         Value
+    DW_ATE_address,         // 0x01
+    DW_ATE_boolean,         // 0x02
+    DW_ATE_complex_float,   // 0x03
+    DW_ATE_float,           // 0x04
+    DW_ATE_signed,          // 0x05
+    DW_ATE_signed_char,     // 0x06
+    DW_ATE_unsigned,        // 0x07
+    DW_ATE_unsigned_char,   // 0x08
+    DW_ATE_imaginary_float, // 0x09
+    DW_ATE_packed_decimal,  // 0x0a
+    DW_ATE_numeric_string,  // 0x0b
+    DW_ATE_edited,          // 0x0c
+    DW_ATE_signed_fixed,    // 0x0d
+    DW_ATE_unsigned_fixed,  // 0x0e
+    DW_ATE_decimal_float,   // 0x0f
+    DW_ATE_UTF,             // 0x10
+    User(u8),               // 0x80 thru 0xff
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Debug)]
 pub enum Attribute {
     DW_AT_sibling(u64),
     DW_AT_location(TypeLoc),
@@ -35,7 +85,7 @@ pub enum Attribute {
     DW_AT_stmt_list(u32), // section offset to the line number information for this compilation unit
     DW_AT_low_pc(u64),    // relocated address of the first instruction associated with the entity
     DW_AT_high_pc(u64),
-    DW_AT_language(u16), // TODO use a language enum
+    DW_AT_language(Language),
     // DW_AT_discr,                // 0x15 reference
     // DW_AT_discr_value,          // 0x16 constant
     // DW_AT_visibility,           // 0x17 constant
@@ -68,7 +118,7 @@ pub enum Attribute {
     DW_AT_decl_line(u32),
     DW_AT_declaration(bool),
     // DW_AT_discr_list,           // 0x3d block
-    DW_AT_encoding(u8), // TODO use an enum
+    DW_AT_encoding(TypeEncoding),
     DW_AT_external(bool),
     DW_AT_frame_base(TypeLoc),
     // DW_AT_friend,               // 0x41 reference
@@ -328,7 +378,8 @@ impl<'a> ParseTypes<'a> {
             AttributeName::DW_AT_low_pc => Attribute::DW_AT_low_pc(self.parse_addr(stream)?),
             AttributeName::DW_AT_high_pc => Attribute::DW_AT_high_pc(self.parse_addr(stream)?), // TODO can be a constant (which is added to low_pc)
             AttributeName::DW_AT_language => {
-                Attribute::DW_AT_language(self.parse_u16(stream, ae.encoding)?)
+                let lang = Language::from_u16(self.parse_u16(stream, ae.encoding)?);
+                Attribute::DW_AT_language(lang)
             }
             AttributeName::DW_AT_discr => {
                 return Err(format!(
@@ -523,7 +574,8 @@ impl<'a> ParseTypes<'a> {
                 .into());
             }
             AttributeName::DW_AT_encoding => {
-                Attribute::DW_AT_encoding(self.parse_u8(stream, ae.encoding)?)
+                let encoding = TypeEncoding::from_u8(self.parse_u8(stream, ae.encoding)?);
+                Attribute::DW_AT_encoding(encoding)
             }
             AttributeName::DW_AT_external => {
                 Attribute::DW_AT_external(self.parse_flag(stream, ae.encoding)?)
@@ -1081,5 +1133,57 @@ impl<'a> ParseTypes<'a> {
             }
         }
         Ok(result)
+    }
+}
+
+impl Language {
+    fn from_u16(value: u16) -> Self {
+        match value {
+            0x0001 => Language::DW_LANG_C89,
+            0x0002 => Language::DW_LANG_C,
+            0x0003 => Language::DW_LANG_Ada83,
+            0x0004 => Language::DW_LANG_C_plus_plus,
+            0x0005 => Language::DW_LANG_Cobol74,
+            0x0006 => Language::DW_LANG_Cobol85,
+            0x0007 => Language::DW_LANG_Fortran77,
+            0x0008 => Language::DW_LANG_Fortran90,
+            0x0009 => Language::DW_LANG_Pascal83,
+            0x000a => Language::DW_LANG_Modula2,
+            0x000b => Language::DW_LANG_Java,
+            0x000c => Language::DW_LANG_C99,
+            0x000d => Language::DW_LANG_Ada95,
+            0x000e => Language::DW_LANG_Fortran95,
+            0x000f => Language::DW_LANG_PLI,
+            0x0010 => Language::DW_LANG_ObjC,
+            0x0011 => Language::DW_LANG_ObjC_plus_plus,
+            0x0012 => Language::DW_LANG_UPC,
+            0x0013 => Language::DW_LANG_D,
+            0x0014 => Language::DW_LANG_Python,
+            _ => Language::User(value),
+        }
+    }
+}
+
+impl TypeEncoding {
+    fn from_u8(value: u8) -> Self {
+        match value {
+            0x01 => TypeEncoding::DW_ATE_address,
+            0x02 => TypeEncoding::DW_ATE_boolean,
+            0x03 => TypeEncoding::DW_ATE_complex_float,
+            0x04 => TypeEncoding::DW_ATE_float,
+            0x05 => TypeEncoding::DW_ATE_signed,
+            0x06 => TypeEncoding::DW_ATE_signed_char,
+            0x07 => TypeEncoding::DW_ATE_unsigned,
+            0x08 => TypeEncoding::DW_ATE_unsigned_char,
+            0x09 => TypeEncoding::DW_ATE_imaginary_float,
+            0x0a => TypeEncoding::DW_ATE_packed_decimal,
+            0x0b => TypeEncoding::DW_ATE_numeric_string,
+            0x0c => TypeEncoding::DW_ATE_edited,
+            0x0d => TypeEncoding::DW_ATE_signed_fixed,
+            0x0e => TypeEncoding::DW_ATE_unsigned_fixed,
+            0x0f => TypeEncoding::DW_ATE_decimal_float,
+            0x10 => TypeEncoding::DW_ATE_UTF,
+            _ => TypeEncoding::User(value),
+        }
     }
 }
