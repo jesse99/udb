@@ -1,6 +1,6 @@
 use super::tables::{add_field, add_simple};
 use crate::commands::tables::{SimpleTableBuilder, TableBuilder};
-use crate::debug::{Abbreviations, ParseTypes, SymbolIndex, Type};
+use crate::debug::{Abbreviation, ParseTypes, SymbolIndex, Type};
 use crate::elf::{
     LoadSegment, MemoryMappedFile, ProgramHeader, SectionHeader, SectionType, Stream, StringIndex,
     VirtualAddr,
@@ -29,7 +29,7 @@ fn get_file(files: &ElfFiles, exe: bool) -> &ElfFile {
 }
 
 pub fn elf_abbreviations(mut out: impl Write, files: &ElfFiles, args: &EntriesArgs) {
-    fn print_abbrev(mut out: impl Write, count: usize, a: &Abbreviations) {
+    fn print_abbrev(mut out: impl Write, count: usize, a: &Abbreviation) {
         uwriteln!(out, "abbrev {count}");
         uwriteln!(out, "   tag: {:?}", a.tag);
         uwriteln!(out, "   has_children: {}", a.has_children);
@@ -39,14 +39,22 @@ pub fn elf_abbreviations(mut out: impl Write, files: &ElfFiles, args: &EntriesAr
     }
 
     let file = get_file(files, true);
-    let mut count = 0;
-    for a in file.find_abbreviations().iter() {
-        if args.max_entries > 0 && count >= args.max_entries {
-            uwriteln!(out, "...");
-            break;
+    let mut offset = 0;
+    loop {
+        let mut count = 0;
+        let (new_offset, abbrevs) = file.abbreviations_at(offset);
+        for a in abbrevs.iter() {
+            if args.max_entries > 0 && count >= args.max_entries {
+                uwriteln!(out, "...");
+                break;
+            }
+            count += 1;
+            print_abbrev(&mut out, count, a);
         }
-        count += 1;
-        print_abbrev(&mut out, count, a);
+        match new_offset {
+            Some(o) => offset = o,
+            None => break,
+        }
     }
 }
 

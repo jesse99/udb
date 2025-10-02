@@ -5,7 +5,7 @@ use crate::{
 use std::error::Error;
 
 /// This determines how values are encoded into the .debug_info section.
-pub struct Abbreviations {
+pub struct Abbreviation {
     /// DW_TAG_compile_unit, DW_TAG_typedef, DW_TAG_base_type, etc
     pub tag: Tag,
 
@@ -23,9 +23,14 @@ pub struct AttributeEncoding {
     pub encoding: FormEncoding,
 }
 
-impl Abbreviations {
-    pub fn new(stream: &mut Stream) -> Result<Self, Box<dyn Error>> {
-        let _code = decode_u64(stream)?; // 1-based index into the abbrev table
+impl Abbreviation {
+    /// Returns an abbreviation or None if we've reached the end of the abbreviations for
+    /// a compilation unit.
+    pub fn new(stream: &mut Stream) -> Result<Option<Self>, Box<dyn Error>> {
+        let code = decode_u64(stream)?; // 1-based index into the abbrev table
+        if code == 0 {
+            return Ok(None); // ends the compilation unit
+        }
 
         let tag = decode_u64(stream)?;
         let tag = Tag::from_u64(tag)?;
@@ -43,15 +48,10 @@ impl Abbreviations {
             let encoding = FormEncoding::from_u64(encoding)?;
             attrs.push(AttributeEncoding { name, encoding })
         }
-        match stream.peek_byte() {
-            Ok(0) => _ = stream.read_byte()?, // ends a compilation unit
-            Ok(_) => (),
-            Err(e) => return Err(e),
-        }
-        Ok(Abbreviations {
+        Ok(Some(Abbreviation {
             tag,
             has_children,
             attrs,
-        })
+        }))
     }
 }

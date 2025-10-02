@@ -3,7 +3,7 @@ use super::{
     ElfHeader, LoadSegment, MemoryMappedFile, NoteType, PrStatus, ProgramHeader, Reader,
     SectionIndex, SegmentType, Stream,
 };
-use crate::debug::{Abbreviations, LineInfo, SymbolTable, SymbolTableEntry};
+use crate::debug::{Abbreviation, LineInfo, SymbolTable, SymbolTableEntry};
 use crate::elf::{
     Bytes, ChildSignal, CoreNoteType, FaultSignal, KillSignal, Note, Offset, PosixSignal,
     RelativeAddr, Relocation, SectionHeader, SectionType, SigInfo, SignalDetails, StringIndex,
@@ -462,26 +462,32 @@ impl ElfFile {
         }
     }
 
-    pub fn find_abbreviations(&self) -> Vec<Abbreviations> {
+    /// Returns the abbreviations for the compilation unit at offset into .debug_abbrev.
+    /// Also returns the offset for the next compilation unit (or None if there are no
+    /// more).
+    pub fn abbreviations_at(&self, offset: u64) -> (Option<u64>, Vec<Abbreviation>) {
         let mut result = Vec::new();
         if let Some(section) = self.find_section_named(".debug_abbrev") {
-            let mut stream = Stream::new(self.reader, section.obytes.start);
+            let mut stream = Stream::new(self.reader, section.obytes.start + offset as i64);
             loop {
-                if stream.offset + 3 >= section.obytes.end() {
-                    break;
-                }
-                match Abbreviations::new(&mut stream) {
-                    Ok(a) => result.push(a),
+                match Abbreviation::new(&mut stream) {
+                    Ok(Some(a)) => result.push(a),
+                    Ok(None) => break,
                     Err(e) => {
                         println!("failed to read abbrev: {e}");
                         break;
                     }
                 }
             }
+            if stream.offset < section.obytes.end() {
+                (Some(stream.offset.0 - section.obytes.start.0), result)
+            } else {
+                (None, result)
+            }
         } else {
             println!("couldn't find section .debug_abbrev");
+            (None, result)
         }
-        result
     }
 }
 

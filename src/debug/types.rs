@@ -1,5 +1,5 @@
 use crate::{
-    debug::{Abbreviations, AttributeEncoding, AttributeName, FormEncoding, Tag, decode_u64},
+    debug::{Abbreviation, AttributeEncoding, AttributeName, FormEncoding, Tag, decode_u64},
     elf::{ElfFile, Offset, Stream, StringView},
 };
 use std::error::Error;
@@ -178,7 +178,7 @@ pub struct ParseTypes<'a> {
     end: Offset,             // .debug_info end
     strings: Option<Offset>, // offset to .debug_str
     addr_size: u8,
-    abbrevs: Vec<Abbreviations>,
+    abbrevs: Vec<Abbreviation>,
     sixty_four: bool,
 }
 
@@ -186,7 +186,7 @@ impl<'a> ParseTypes<'a> {
     pub fn new(exe: &'a ElfFile) -> Result<Self, Box<dyn Error>> {
         if let Some(section) = exe.find_section_named(".debug_info") {
             let mut stream = Stream::new(exe.reader, section.obytes.start);
-            let abbrevs = exe.find_abbreviations();
+            let (_, abbrevs) = exe.abbreviations_at(0);
             let strings = exe.find_section_named(".debug_str").map(|s| s.obytes.start);
             match ParseTypes::parse_header(&mut stream) {
                 Ok((sixty_four, length, addr_size)) => Ok(ParseTypes {
